@@ -1,6 +1,6 @@
 from mesa import Agent, Model
 from mesa.time import RandomActivation
-from mesa.space import SingleGrid
+from mesa.space import MultiGrid
 import random
 import matplotlib.pyplot as plt
 import math
@@ -41,19 +41,19 @@ class Person(Agent):
     step: what he is supposed to do
     """
 
-    def __init__(self, uid, model, pos):
+    def __init__(self, uid, model, pos, destiny):
         super().__init__(uid, model)
-        self.destiny = []
+        self.destiny = destiny
         self.pos = pos
         self.status = 'going'
 
     def find_new_destiny(self):
         # Fixed
-        if self.destiny and self.destiny[0] == -10:
+        if self.destiny and self.destiny[0] == 10:
             #self.destiny = Point(10, 10)
-            self.destiny = (10, 10)
+            self.destiny = (0, 0)
         else:
-            self.destiny = (-10, -10)
+            self.destiny = (10, 10)
 
     def get_next_pos_naively(self):
         newx = self.pos[0]
@@ -78,23 +78,21 @@ class Person(Agent):
         else:
             self.status = 'going'
 
-    def move(self):
-        newpos = self.get_next_pos_naively()
-        self.pos = newpos
-        self.update_status()
+    #def move(self):
+        #newpos = self.get_next_pos_naively()
+        #self.pos = newpos
+        #self.update_status()
 
     def step(self):
-        if not self.destiny: self.find_new_destiny()
-        self.move()
+        #if not self.destiny: self.find_new_destiny()
+        #self.grid
+        newpos = self.get_next_pos_naively()
+        self.model.grid.move_agent(self, newpos)
+        self.update_status()
 
         if self.status == 'reached':
             self.find_new_destiny()
             self.update_status()
-            #return
-        #other_agent = random.choice(self.model.schedule.agents)
-        #other_agent.wealth += 1
-        #self.wealth -= 1
-        #print(self.unique_id)
     
 class Car(Agent):
     """An agent with fixed initial wealth
@@ -115,18 +113,6 @@ class Car(Agent):
         other_agent = random.SystemRandom.choice(self.model.schedule.agents)
         other_agent.wealth += 1
         self.wealth -= 1
-        #print(self.unique_id)
-
-#class Map(): # Grid simulating continuous map
-    #def __init__(self, left, top, right, bottom): 
-        #self.left = left
-        #self.top = top
-        #self.right = right
-        #self.bottom = bottom
-        #self.grid = SingleGrid(right-left, bottom-top, False)
-        #self.occupied = []
-        #self.obstacle = []
-
     
 class SensingModel(Model):
     """A model with some number of agents
@@ -141,29 +127,29 @@ class SensingModel(Model):
         self.num_agents = N
         self.schedule = RandomActivation(self)  # Heuristics of order of steps
         self.rng = random.SystemRandom()
-        self.grid = SingleGrid(width, height, False)
+        self.grid = MultiGrid(width, height, False)
 
         for i in range(self.num_agents):
-            #pos = Point(100,100)
-            pos = (100,100)
-            a = Person(i, self, pos)
+            pos = (5+i, 5+i)
+            destiny = (0, 0)
+            a = Person(i, self, pos, destiny)
             self.schedule.add(a)
             pos = self.grid.find_empty()
-            #print(pos)
             self.grid.place_agent(a, pos)
 
-    def get_random_pos(self):
-        self.rng.random
     def step(self):
         self.schedule.step()
 
+        for x in range(self.grid.width):
+            for y in range(self.grid.height):
+                if self.grid.is_cell_empty((x,y)):
+                    print('___ ', end='')
+                else:
+                    print('*** ', end='')
+            print('\n')
+
 if __name__ == '__main__':
-    mymodel = SensingModel(10, 200, 200)
+    mymodel = SensingModel(10, 20, 20)
     for i in range(200):
         mymodel.step()
-
-        #for agent in mymodel.schedule.agents:
-            #all_wealth.append(agent.wealth)
-
-    #plt.hist(all_wealth, bins=range(max(all_wealth) + 1))
-    #plt.show()
+        input('')
