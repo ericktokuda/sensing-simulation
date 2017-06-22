@@ -52,7 +52,7 @@ class Person(Agent):
     def step(self):
         newpos = self.path.pop()
         nx, ny = newpos
-        self.model.grid.move_agent(self, newpos)
+        self.model.grid.move_person(self, newpos)
         self.update_status()
 
         if self.status == 'reached':

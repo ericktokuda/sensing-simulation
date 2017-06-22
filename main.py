@@ -30,7 +30,6 @@ def main():
 
     #h, w = searchmap.shape
     mymodel = model.SensingModel(1, searchmap, log)
-    print('asdfasdf')
 
     for i in range(200):
         mymodel.step()

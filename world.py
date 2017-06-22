@@ -5,51 +5,33 @@ import numpy as np
 import random
 import math
 
+class World():
+    def __init__(self, width, height, obstacles=set()):
+        #super().__init__(width, height, False)
+        self.width = width
+        self.height = height
+        self.people = set() # set of positions
+        self.cars = set() 
+        self.count = np.full((height, width), 0)
+        self.obstacles = obstacles
+        #self.obstacles = 
 
+    def place_person(self, person, pos):
+        x, y = pos
+        self.people.add(person)
+        person.pos = pos
+        self.count[y][x] += 1
 
-#def accept_tuple_argument(wrapped_function):
-    #""" Decorator to allow grid methods that take a list of (x, y) position tuples
-    #to also handle a single position, by automatically wrapping tuple in
-    #single-item list rather than forcing user to do it.
+    def move_person(self, person, pos):
+        oldx, oldy = person.pos
+        self.place_person(person, pos)
+        self.count[oldy][oldx] -= 1
 
-    #"""
-    #def wrapper(*args):
-        #if isinstance(args[1], tuple) and len(args[1]) == 2:
-            #return wrapped_function(args[0], [args[1]])
-        #else:
-            #return wrapped_function(*args)
-    #return wrapper
-
-class World(MultiGrid):
-    pass
-    #@staticmethod
-    #def default_val():
-        #""" Default value for new cell elements. """
-        #return set()
-
-    #def _place_agent(self, pos, agent):
-        #""" Place the agent at the correct location. """
-        #x, y = pos
-        #self.grid[x][y].add(agent)
-        #if pos in self.empties:
-            #self.empties.remove(pos)
-
-    #def _remove_agent(self, pos, agent):
-        #""" Remove the agent from the given location. """
-        #x, y = pos
-        #self.grid[x][y].remove(agent)
-        #if self.is_cell_empty(pos):
-            #self.empties.append(pos)
-
-    #@accept_tuple_argument
-    #def iter_cell_list_contents(self, cell_list):
-        #"""
-        #Args:
-            #cell_list: Array-like of (x, y) tuples, or single tuple.
-
-        #Returns:
-            #A iterator of the contents of the cells identified in cell_list
-
-        #"""
-        #return itertools.chain.from_iterable(
-            #self[x][y] for x, y in cell_list if not self.is_cell_empty((x, y)))
+    def place_car(self, car, pos):
+        x, y = pos
+        oldpos = car.pos
+        oldx, oldy = oldpos
+        self.cars.add(car)
+        car.pos = pos
+        self.count[oldy][oldx] -= 1
+        self.count[y][x] += 1
