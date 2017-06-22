@@ -19,13 +19,13 @@ class Astar:
     """
 
     def __init__(self, heuristics, s, g):
-        self.width, self.height = heuristics.shape
-        sx, sy = s
-        gx, gy = g
+        self.height, self.width = heuristics.shape
+        sy, sx = s
+        gy, gx = g
         self.closedset = set()
         self.openset = []
-        self.start = (sy, sx)
-        self.goal = (gy, gx)
+        self.start = s
+        self.goal = g
         self.camefrom = {}
         self.h = heuristics
         self.g = np.full(heuristics.shape, MAX)
@@ -37,24 +37,24 @@ class Astar:
     def get_4conn_neighbours(self, pos):
         neighbours = []
 
-        x, y = pos
+        y, x = pos
         if x > 0:
-            neighbours.append((x-1, y))
+            neighbours.append((y, x-1))
 
         if x < self.width - 1:
-            neighbours.append((x+1, y))
+            neighbours.append((y, x+1))
 
         if y > 0:
-            neighbours.append((x, y-1))
+            neighbours.append((y-1, x))
 
         if y < self.height - 1:
-            neighbours.append((x, y+1))
+            neighbours.append((y+1, x))
         return neighbours
 
     def get_8conn_neighbours(self, pos):
         neighbours = []
 
-        x, y = pos
+        y, x = pos
         def get_deltas_1d(x, lastpos):
             if x == 0:
                 return [0, 1]
@@ -74,21 +74,20 @@ class Astar:
         return neighbours
 
     def recreate_path(self, current):
-        cx, cy = current
-        total_path = [(cy, cx)]
+        total_path = [current]
         v = current
 
         while v in self.camefrom.keys():
             v = self.camefrom[v]
-            vx, vy = v
-            total_path.append((vy, vx))
+            #vy, vx = v
+            total_path.append(v)
 
         return total_path
 
     def find_shortest_path(self):
-        sx, sy = self.start
+        sy, sx = self.start
         #print(self.start)
-        heapq.heappush(self.openset, (self.h[sx][sy], self.start))
+        heapq.heappush(self.openset, (self.h[sy][sx], self.start))
 
         while self.openset:
             current = heapq.heappop(self.openset)[1]
@@ -99,21 +98,21 @@ class Astar:
             self.closedset.add(current)
 
             for v in self.get_neighbours(current):
-                vx, vy = v
+                vy, vx = v
                 if v in self.closedset: continue
 
                 nodes = [x[1] for x in self.openset]
 
                 dist = self.g[current[0]][current[1]] + 1
-                if dist >= self.g[vx][vy]:
+                if dist >= self.g[vy][vx]:
                     if v not in nodes:
                         heapq.heappush(self.openset, (MAX, v))
                     continue
 
                 self.camefrom[v] = current
-                self.g[vx][vy] = dist
+                self.g[vy][vx] = dist
 
-                neighcost = self.g[vx][vy] + self.h[vx][vy]
+                neighcost = self.g[vy][vx] + self.h[vy][vx]
 
                 if v not in nodes:
                     heapq.heappush(self.openset, (neighcost, v))
@@ -123,7 +122,7 @@ class Astar:
 def compute_heuristics(searchmap, goal):
     s = searchmap
 
-    gx, gy = goal
+    gy, gx = goal
     height, width = s.shape
 
     h = np.empty(s.shape)
@@ -144,8 +143,11 @@ def compute_heuristics(searchmap, goal):
 
 ##########################################################
 def main():
-    start = (0, 2)
-    goal  = (13, 9)
+    #start = (0, 2)
+    #goal  = (13, 9)
+
+    start = (2, 0)
+    goal  = (7, 17)
 
     searchmap1 = np.array([
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -162,7 +164,7 @@ def main():
 
     # With obstacles
     searchmap2 = np.array([ 
-        # 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 9, 0, 1, 2],
+        # 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
         [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #0
         [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
         [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #2
@@ -180,6 +182,7 @@ def main():
     astar = Astar(heuristics, start, goal)
     final_path = astar.find_shortest_path()
     pprint.pprint(final_path)
+    return
 
 if __name__ == "__main__":
     main()
