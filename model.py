@@ -2,14 +2,20 @@ from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
 
-import random
-import matplotlib.pyplot as plt
-import math
-import numpy as np
+import argparse
 import astar
-import sys
 import logging
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+import sys
 
+
+logging.basicConfig(level=logging.CRITICAL)
+lg = logging.getLogger(__name__)
+
+#############################################################
 class Point():
     def __init__(self, x, y):
         self.x = x
@@ -37,6 +43,7 @@ class Point():
         else:
             return False
 
+#############################################################
 class Person(Agent):
     """An agent with fixed initial wealth
 
@@ -56,20 +63,16 @@ class Person(Agent):
 
     def create_path(self):
         heuristics = astar.compute_heuristics(self.model.searchmap, self.destiny)
-        #print(self.pos)
-        #print(self.destiny)
         search = astar.Astar(heuristics, self.pos, self.destiny)
         self.path = search.find_shortest_path()
         if not self.path:
-            print('could not find path from {} to {}'.format(self.pos, self.destiny))
+            lg.debug('Could not find path from {} to {}'. \
+                     format(self.pos, self.destiny))
 
     def find_new_destiny(self):
-        # Fixed
         x = self.model.rng.randrange(0, self.model.grid.width)
         y = self.model.rng.randrange(0, self.model.grid.height)
         self.destiny = (x, y)
-        print('New destiny:')
-        print(self.destiny)
 
     def get_next_pos_naively(self):
         newx = self.pos[0]
@@ -95,10 +98,6 @@ class Person(Agent):
             self.status = 'going'
 
     def step(self):
-        #newpos = self.get_next_pos_naively()
-        #print('path:{}'.format(self.path))
-        #print('curpos:{}'.format(self.pos))
-
         newpos = self.path.pop()
         nx, ny = newpos
         self.model.grid.move_agent(self, newpos)
@@ -109,6 +108,7 @@ class Person(Agent):
             self.create_path()
             self.update_status()
     
+#############################################################
 class Car(Agent):
     """An agent with fixed initial wealth
 
@@ -129,6 +129,7 @@ class Car(Agent):
         other_agent.wealth += 1
         self.wealth -= 1
     
+#############################################################
 class SensingModel(Model):
     """A model with some number of agents
 
@@ -144,7 +145,8 @@ class SensingModel(Model):
         self.rng = random.SystemRandom()
         self.grid = MultiGrid(width, height, False)
         self.searchmap = world
-        print('Sensing model grid sizes w:{}, h:{}'.format(self.grid.width, self.grid.height))
+        lg.debug('Sensing model grid sizes w:{}, h:{}'. \
+                 format(self.grid.width, self.grid.height))
 
         for i in range(self.num_agents):
             pos = (0+i, 2+i)
@@ -158,17 +160,22 @@ class SensingModel(Model):
         for x in range(self.grid.width):
             for y in range(self.grid.height):
                 if self.grid.is_cell_empty((x,y)):
-                    print('___ ', end='')
+                    print('_ ', end='')
                 else:
-                    print('*** ', end='')
-            print('\n')
+                    print('o ', end='')
+            print()
 
     def step(self):
         self.schedule.step()
         self.print_map()
 
+#############################################################
 def main():
-    # x is vertical, y is horizontal
+    parser = argparse.ArgumentParser(description='Sensing model')
+    parser.add_argument('-v', action='store_true', default=False)
+    args = parser.parse_args()
+    if args.v: lg.setLevel(logging.DEBUG)
+
     searchmap = np.array([
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
@@ -183,8 +190,6 @@ def main():
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
 
     h, w = searchmap.shape
-    #print('numpy map shape')
-    #print(searchmap.shape)
     mymodel = SensingModel(1, w, h, searchmap)
 
     for i in range(200):
