@@ -1,6 +1,5 @@
 #!/usr/bin/python3
-"""A* implementation by tokudaek
-
+""" A* implementation by tokudaek
 """
 
 import sys
@@ -11,23 +10,26 @@ import pprint
 
 MAX = 9999999
 
+##########################################################
+
 class Astar:
     """Astar implementation
-    Cost(v) = CostFromStartToV + EstimateCostFromVToGoal
-
+    Be careful because I invert the input to have first coordinate as horizontal axis
+    (Thats why I need to invert the coordinates in some parts)
     """
 
     def __init__(self, heuristics, s, g):
         self.width, self.height = heuristics.shape
         sx, sy = s
+        gx, gy = g
         self.closedset = set()
         self.openset = []
-        self.start = s
-        self.goal = g
+        self.start = (sy, sx)
+        self.goal = (gy, gx)
         self.camefrom = {}
         self.h = heuristics
         self.g = np.full(heuristics.shape, MAX)
-        self.g[sx][sy] = 0
+        self.g[sy][sx] = 0
 
     def get_neighbours(self, pos):
         neighbours = []
@@ -51,29 +53,24 @@ class Astar:
         return neighbours
 
     def recreate_path(self, current):
-        total_path = [current]
+        cx, cy = current
+        total_path = [(cy, cx)]
         v = current
 
         while v in self.camefrom.keys():
             v = self.camefrom[v]
-            total_path.append(v)
+            vx, vy = v
+            total_path.append((vy, vx))
 
-        #print('Got destination!')
         return total_path
 
     def find_shortest_path(self):
-        ii = -1 
-
         sx, sy = self.start
+        #print(self.start)
         heapq.heappush(self.openset, (self.h[sx][sy], self.start))
 
         while self.openset:
-            ii += 1
-            print('##########################################################')
-            pprint.pprint(self.openset)
             current = heapq.heappop(self.openset)[1]
-            pprint.pprint(current)
-            input('')
 
             if current == self.goal:
                 return self.recreate_path(current)
@@ -100,20 +97,21 @@ class Astar:
                 if v not in nodes:
                     heapq.heappush(self.openset, (neighcost, v))
         return []
-
     
+##########################################################
 def compute_heuristics(searchmap, goal):
     s = searchmap
 
+    gx, gy = goal
     height, width = s.shape
 
-    h = np.empty((height, width))
+    h = np.empty(s.shape)
 
     for i in range(height):
-        distx = math.fabs(i-goal[0])
+        distx = math.fabs(i-gy)
         for j in range(width):
             if s[i][j] == 0:
-                disty = math.fabs(j-goal[1])
+                disty = math.fabs(j-gx)
                 h[i][j] = distx + disty
             else:
                 h[i][j] = MAX
@@ -121,9 +119,12 @@ def compute_heuristics(searchmap, goal):
 
 ##########################################################
 def main():
-    start = (2, 0)
-    goal  = (8, 13)
+    #start = (2, 0)
+    #goal  = (8, 13)
+    start = (0, 2)
+    goal  = (13, 8)
 
+    # x is vertical, y is horizontal
     searchmap = np.array([
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
@@ -138,9 +139,7 @@ def main():
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
 
     heuristics = compute_heuristics(searchmap, goal)
-    #pprint.pprint(heuristics)
-    print(heuristics[2][0])
-    return
+    pprint.pprint(heuristics)
 
     astar = Astar(heuristics, start, goal)
     final_path = astar.find_shortest_path()
