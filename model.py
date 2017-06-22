@@ -1,9 +1,14 @@
 from mesa import Agent, Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
+
 import random
 import matplotlib.pyplot as plt
 import math
+import numpy as np
+import astar
+import sys
+import logging
 
 class Point():
     def __init__(self, x, y):
@@ -46,14 +51,25 @@ class Person(Agent):
         self.destiny = destiny
         self.pos = pos
         self.status = 'going'
+        self.speed = 2
+        self.path = []
+
+    def create_path(self):
+        heuristics = astar.compute_heuristics(self.model.searchmap, self.destiny)
+        #print(self.pos)
+        #print(self.destiny)
+        search = astar.Astar(heuristics, self.pos, self.destiny)
+        self.path = search.find_shortest_path()
+        if not self.path:
+            print('could not find path from {} to {}'.format(self.pos, self.destiny))
 
     def find_new_destiny(self):
         # Fixed
-        if self.destiny and self.destiny[0] == 10:
-            #self.destiny = Point(10, 10)
-            self.destiny = (0, 0)
-        else:
-            self.destiny = (10, 10)
+        x = self.model.rng.randrange(0, self.model.grid.width)
+        y = self.model.rng.randrange(0, self.model.grid.height)
+        self.destiny = (x, y)
+        print('New destiny:')
+        print(self.destiny)
 
     def get_next_pos_naively(self):
         newx = self.pos[0]
@@ -78,20 +94,19 @@ class Person(Agent):
         else:
             self.status = 'going'
 
-    #def move(self):
-        #newpos = self.get_next_pos_naively()
-        #self.pos = newpos
-        #self.update_status()
-
     def step(self):
-        #if not self.destiny: self.find_new_destiny()
-        #self.grid
-        newpos = self.get_next_pos_naively()
+        #newpos = self.get_next_pos_naively()
+        #print('path:{}'.format(self.path))
+        #print('curpos:{}'.format(self.pos))
+
+        newpos = self.path.pop()
+        nx, ny = newpos
         self.model.grid.move_agent(self, newpos)
         self.update_status()
 
         if self.status == 'reached':
             self.find_new_destiny()
+            self.create_path()
             self.update_status()
     
 class Car(Agent):
@@ -123,23 +138,23 @@ class SensingModel(Model):
     step: what happens in the model in each step
     """
 
-    def __init__(self, N, width, height):
+    def __init__(self, N, width, height, world):
         self.num_agents = N
         self.schedule = RandomActivation(self)  # Heuristics of order of steps
         self.rng = random.SystemRandom()
         self.grid = MultiGrid(width, height, False)
+        self.searchmap = world
+        print('Sensing model grid sizes w:{}, h:{}'.format(self.grid.width, self.grid.height))
 
         for i in range(self.num_agents):
-            pos = (5+i, 5+i)
-            destiny = (0, 0)
+            pos = (0+i, 2+i)
+            destiny = (13, 8)
             a = Person(i, self, pos, destiny)
             self.schedule.add(a)
-            pos = self.grid.find_empty()
+            a.create_path()
             self.grid.place_agent(a, pos)
 
-    def step(self):
-        self.schedule.step()
-
+    def print_map(self):
         for x in range(self.grid.width):
             for y in range(self.grid.height):
                 if self.grid.is_cell_empty((x,y)):
@@ -148,8 +163,33 @@ class SensingModel(Model):
                     print('*** ', end='')
             print('\n')
 
-if __name__ == '__main__':
-    mymodel = SensingModel(10, 20, 20)
+    def step(self):
+        self.schedule.step()
+        self.print_map()
+
+def main():
+    # x is vertical, y is horizontal
+    searchmap = np.array([
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
+
+    h, w = searchmap.shape
+    #print('numpy map shape')
+    #print(searchmap.shape)
+    mymodel = SensingModel(1, w, h, searchmap)
+
     for i in range(200):
         mymodel.step()
         input('')
+
+if __name__ == '__main__':
+    main()
