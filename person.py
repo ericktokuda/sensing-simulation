@@ -1,30 +1,25 @@
-from mesa import Agent
-
 import astar
 
 #############################################################
-class Person(Agent):
+class Person():
 
-    def __init__(self, uid, model, pos, destiny):
-        super().__init__(uid, model)
+    def __init__(self, _id, model, pos, destiny, searchmap):
+        #super().__init__(uid, model)
+        self.id = _id
         self.destiny = destiny
         self.pos = pos
         self.status = 'going'
         self.speed = 2
         self.path = []
+        self.searchmap = searchmap
 
     def create_path(self):
-        heuristics = astar.compute_heuristics(self.model.searchmap, self.destiny)
+        heuristics = astar.compute_heuristics(self.searchmap, self.destiny)
         search = astar.Astar(heuristics, self.pos, self.destiny)
         self.path = search.find_shortest_path()
         if not self.path:
-            lg.debug('Could not find path from {} to {}'. \
+            print('Could not find path from {} to {}'. \
                      format(self.pos, self.destiny))
-
-    def find_new_destiny(self):
-        x = self.model.rng.randrange(0, self.model.grid.width)
-        y = self.model.rng.randrange(0, self.model.grid.height)
-        self.destiny = (x, y)
 
     def get_next_pos_naively(self):
         newx = self.pos[0]
@@ -50,12 +45,13 @@ class Person(Agent):
             self.status = 'going'
 
     def step(self):
-        newpos = self.path.pop()
-        nx, ny = newpos
-        self.model.grid.move_person(self, newpos)
-        self.update_status()
+        #pass
+        self.pos = self.path.pop()
+        #nx, ny = newpos
+        #self.model.move_person(self, newpos)
+        #self.update_status()
 
-        if self.status == 'reached':
-            self.find_new_destiny()
-            self.create_path()
-            self.update_status()
+        #if self.status == 'reached':
+            #self.find_new_destiny()
+            #self.create_path()
+            #self.update_status()

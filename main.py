@@ -6,6 +6,8 @@ import model
 
 #############################################################
 def main():
+    NUMITER = 2000
+
     parser = argparse.ArgumentParser(description='Sensing model')
     parser.add_argument('-v', action='store_true', default=False)
     args = parser.parse_args()
@@ -28,10 +30,10 @@ def main():
         [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #9
         [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]) #0
 
-    #h, w = searchmap.shape
-    mymodel = model.SensingModel(1, searchmap, log)
+    h, w = searchmap.shape
+    mymodel = model.SensingModel(1, 1, searchmap, log)
 
-    for i in range(200):
+    for i in range(NUMITER):
         mymodel.step()
         input('')
 
