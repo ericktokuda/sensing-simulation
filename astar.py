@@ -32,8 +32,29 @@ class Astar:
         self.g[sy][sx] = 0
 
     def get_neighbours(self, pos):
+        return self.get_4conn_neighbours(pos)
+
+    def get_4conn_neighbours(self, pos):
         neighbours = []
 
+        x, y = pos
+        if x > 0:
+            neighbours.append((x-1, y))
+
+        if x < self.width - 1:
+            neighbours.append((x+1, y))
+
+        if y > 0:
+            neighbours.append((x, y-1))
+
+        if y < self.height - 1:
+            neighbours.append((x, y+1))
+        return neighbours
+
+    def get_8conn_neighbours(self, pos):
+        neighbours = []
+
+        x, y = pos
         def get_deltas_1d(x, lastpos):
             if x == 0:
                 return [0, 1]
@@ -110,22 +131,23 @@ def compute_heuristics(searchmap, goal):
     for i in range(height):
         distx = math.fabs(i-gy)
         for j in range(width):
-            if s[i][j] == 0:
+            v = s[i][j]
+            if v == -1: # obstacle
+                h[i][j] = MAX
+            elif v == 0: # normal
                 disty = math.fabs(j-gx)
                 h[i][j] = distx + disty
-            else:
-                h[i][j] = MAX
+            else: # more difficult place
+                disty = math.fabs(j-gx)
+                h[i][j] = distx + disty + v
     return h
 
 ##########################################################
 def main():
-    #start = (2, 0)
-    #goal  = (8, 13)
     start = (0, 2)
-    goal  = (13, 8)
+    goal  = (13, 9)
 
-    # x is vertical, y is horizontal
-    searchmap = np.array([
+    searchmap1 = np.array([
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
         [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -138,8 +160,22 @@ def main():
         [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
         [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
 
-    heuristics = compute_heuristics(searchmap, goal)
-    pprint.pprint(heuristics)
+    # With obstacles
+    searchmap2 = np.array([ 
+        # 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 9, 0, 1, 2],
+        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #0
+        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #2
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #3
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #4
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #5
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #6
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #7
+        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #8
+        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #9
+        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]) #0
+
+    heuristics = compute_heuristics(searchmap2, goal)
 
     astar = Astar(heuristics, start, goal)
     final_path = astar.find_shortest_path()
