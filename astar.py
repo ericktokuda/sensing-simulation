@@ -6,60 +6,42 @@
 import sys
 import heapq
 import math
+import numpy as np
+import pprint
 
-class Cost:
-    def __init__(self, x, y, heuristic=0):
-        self.pos = (x, y)
-        self.cost =  sys.maxsize
-        self.g =  sys.maxsize
-        self.h = sys.maxsize
+MAX = 9999999
 
-    def __lt__(self, other):
-        return self.cost < other.cost
+class Astar:
+    """Astar implementation
+    Cost(v) = CostFromStartToV + EstimateCostFromVToGoal
 
-    def __gt__(self, other):
-        return self.cost > other.cost
+    """
 
-    def __eq__(self, other):
-        return self.cost == other.cost
-
-    def equalpos(self, other):
-        return self.pos == other.pos
-
-    def dist(self, other, metric='manhattan'):
-        dx = self.pos[0] - other.pos[0]
-        dy = self.pos[1] - other.pos[1]
-        return math.fabs(dx) + math.fabs(dy)
-
-class Grid:
-    def __init__(self, width, height, goal):
-        self.grid = []
-        self.width = width
-        self.height = height
-        self.goal = goal
-        for i in range(width):
-            self.grid.append([])
-            for j in range(height):
-                node = Cost(i, j)
-                node.h = node.dist(goal)
-                self.grid[i].append(node)
+    def __init__(self, heuristics, s, g):
+        self.width, self.height = heuristics.shape
+        sx, sy = s
+        self.closedset = set()
+        self.openset = []
+        self.start = s
+        self.goal = g
+        self.camefrom = {}
+        self.h = heuristics
+        self.g = np.full(heuristics.shape, MAX)
+        self.g[sx][sy] = 0
 
     def get_neighbours(self, pos):
         neighbours = []
 
-        if pos[0] == 0:
-            dxs = [0, 1]
-        elif pos[0] == self.width - 1:
-            dxs = [-1, 0]
-        else:
-            dxs = [-1, 0, 1]
+        def get_deltas_1d(x, lastpos):
+            if x == 0:
+                return [0, 1]
+            elif x == lastpos:
+                return [-1, 0]
+            else:
+                return [-1, 0, 1]
 
-        if pos[1] == 0:
-            dys = [0, 1]
-        elif pos[1] == self.height - 1:
-            dys = [-1, 0]
-        else:
-            dys = [-1, 0, 1]
+        dxs = get_deltas_1d(pos[0], self.width - 1)
+        dys = get_deltas_1d(pos[1], self.height - 1)
 
         for dx in dxs:
             for dy in dys:
@@ -68,67 +50,101 @@ class Grid:
                 neighbours.append(node)
         return neighbours
 
+    def recreate_path(self, current):
+        total_path = [current]
+        v = current
 
-class Astar:
-    """Astar implementation
-    Cost(v) = CostFromStartToV + EstimateCostFromVToGoal
+        while v in self.camefrom.keys():
+            v = self.camefrom[v]
+            total_path.append(v)
 
-    """
-
-    def __init__(self, s, g):
-        self.closedset = []
-        self.openset = []
-        self.startnode = Cost(s[0], s[1])
-        self.startnode.g = 0
-        self.goal = Cost(g[0], g[1])
-        self.grid = Grid(2000, 2000, self.goal)
-        self.camefrom = {}
-        heapq.heappush(self.openset, self.startnode)
-
-    def recreate_path(self):
-        print('Got destination!')
-        print('should recreate path')
-
+        #print('Got destination!')
+        return total_path
 
     def find_shortest_path(self):
         ii = -1 
 
+        sx, sy = self.start
+        heapq.heappush(self.openset, (self.h[sx][sy], self.start))
+
         while self.openset:
             ii += 1
-            #current = heapq.nsmallest(1, self.openset)[0]
-            current = heapq.heappop(self.openset)
+            print('##########################################################')
+            pprint.pprint(self.openset)
+            current = heapq.heappop(self.openset)[1]
+            pprint.pprint(current)
+            input('')
 
-            if current.equalpos(self.goal):
-                self.recreate_path()
-                return 1
-            print('current:({},{})'.format(current.pos[0], current.pos[1]))
+            if current == self.goal:
+                return self.recreate_path(current)
 
-            heapq.heappush(self.closedset, current)
+            self.closedset.add(current)
 
-            for v in self.grid.get_neighbours(current.pos):
-                nodes = [x.pos for x in self.closedset]
-                if v in nodes: continue
+            for v in self.get_neighbours(current):
+                vx, vy = v
+                if v in self.closedset: continue
 
-                nodes = [x.pos for x in self.openset]
+                nodes = [x[1] for x in self.openset]
+
+                dist = self.g[current[0]][current[1]] + 1
+                if dist >= self.g[vx][vy]:
+                    if v not in nodes:
+                        heapq.heappush(self.openset, (MAX, v))
+                    continue
+
+                self.camefrom[v] = current
+                self.g[vx][vy] = dist
+
+                neighcost = self.g[vx][vy] + self.h[vx][vy]
 
                 if v not in nodes:
-                    heapq.heappush(self.openset, self.grid.grid[v[0]][v[1]])
-                    #heapself.openset
-
-                dist = current.g + 1
-                if dist >= self.grid.grid[v[0]][v[1]].g: continue
-
-                self.camefrom[v] = current.pos
-                self.grid.grid[v[0]][v[1]].g = dist
-
-                self.grid.grid[v[0]][v[1]].cost = self.grid.grid[v[0]][v[1]].g + self.grid.grid[v[0]][v[1]].h
-                print('closed len:{}, openlen: {}'.format(len(self.closedset),len(self.openset)))
-        return 0
+                    heapq.heappush(self.openset, (neighcost, v))
+        return []
 
     
+def compute_heuristics(searchmap, goal):
+    s = searchmap
+
+    height, width = s.shape
+
+    h = np.empty((height, width))
+
+    for i in range(height):
+        distx = math.fabs(i-goal[0])
+        for j in range(width):
+            if s[i][j] == 0:
+                disty = math.fabs(j-goal[1])
+                h[i][j] = distx + disty
+            else:
+                h[i][j] = MAX
+    return h
+
+##########################################################
 def main():
-    astar = Astar((0, 0), (500, 1100))
-    astar.find_shortest_path()
+    start = (2, 0)
+    goal  = (8, 13)
+
+    searchmap = np.array([
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
+
+    heuristics = compute_heuristics(searchmap, goal)
+    #pprint.pprint(heuristics)
+    print(heuristics[2][0])
+    return
+
+    astar = Astar(heuristics, start, goal)
+    final_path = astar.find_shortest_path()
+    pprint.pprint(final_path)
 
 if __name__ == "__main__":
     main()
