@@ -7,12 +7,14 @@ import itertools
 import time
 
 import person
+import car
 
 #############################################################
 class SensingModel():
     def __init__(self, npeople, ncars, searchmap, log):
         self.rng = random.SystemRandom()
         h, w = searchmap.shape
+        self.carrange = 3
         self.log = log
         self.maph = h
         self.mapw = w
@@ -73,64 +75,140 @@ class SensingModel():
             self.people.append(a)
             t0 = time.time()
             a.create_path()
-            self.log.debug('Create_path of agent {} took {}.'. \
+            self.log.debug('Create_path of person {} took {}.'. \
                       format(self.lastid, time.time() - t0))
             self.place_person(a, pos)
 
-    def place_cars(self, ncars):
-        pass
+    def place_cars(self, ncars, _range):
+        for i in range(ncars):
+            pos = self.get_free_pos()
+            destiny = self.get_free_pos(pos)
+            self.lastid += 1
+            a = car.Car(self.lastid, self, pos, destiny,
+                        self.searchmap, _range)
+            self.cars.append(a)
+            t0 = time.time()
+            a.create_path()
+            self.log.debug('Create_path of car {} took {}.'. \
+                      format(self.lastid, time.time() - t0))
+            self.place_car(a, pos)
 
     def place_agents(self, npeople, ncars):
         self.place_people(npeople)
-        self.place_cars(ncars)
+        self.place_cars(ncars, self.carrange)
 
     def print_map(self):
         for y in range(self.maph):
             for x in range(self.mapw):
-                #if self.count[y][x] == 0:
+                pos = (y,x)
                 if self.searchmap[y][x] == -1:
-                    print('x ', end='')
-                elif self.count[y][x] == 0:
-                    print('_ ', end='')
+                    print('x', end='')
+                elif pos in [c.pos for c in self.cars]:
+                    print('⚀', end='')
+                elif pos in [p.pos for p in self.people]:
+                    print('☺', end='')
                 else:
-                    print('o ', end='')
+                    print(' ', end='')
             print()
 
-    def place_person(self, person, pos):
+    def print_sensed_density(self):
+        for y in range(self.maph):
+            for x in range(self.mapw):
+                #pos = (y,x)
+                #print(car.Car.count.shape)
+                count = float(car.Car.count[y][x])
+                s = car.Car.samplesz[y][x]
+                if s == 0:
+                    print(' ', end='')
+                else :
+                    print(count/s, end='')
+            print()
+    def add_agents_count(self, pos, delta=1):
         y, x = pos
+        self.count[y][x] += delta
+
+    def place_person(self, person, pos):
         self.people.append(person)
         person.pos = pos
-        self.count[y][x] += 1
+        self.add_agents_count(pos, +1)
 
     def move_person(self, person, pos):
-        oldy, oldx = person.pos
+        oldpos = person.pos
         self.place_person(person, pos)
-        self.count[oldy][oldx] -= 1
+        self.add_agents_count(oldpos, -1)
 
     def place_car(self, car, pos):
-        y, x = pos
-        self.cars.add(car)
-        cars.pos = pos
-        self.count[y][x] += 1
+        #y, x = pos
+        self.cars.append(car)
+        car.pos = pos
+        self.add_agents_count(pos, +1)
 
     def move_car(self, car, pos):
-        oldy, oldx = car.pos
+        oldpos = car.pos
         self.place_car(car, pos)
-        self.count[oldy][oldx] -= 1
+        self.add_agents_count(oldpos, -1)
+
+    def get_enclosing_square(self, _car):
+        d = _car.range
+        y0, x0 = _car.pos
+        cells = set()
+
+        t = y0 - d
+        b = y0 + d
+        l = x0 - d
+        r = x0 + d
+        if t < 0: t = 0 #trying to save somec omputations
+        elif b > self.maph: b = self.maph
+        if l < 0: l = 0
+        elif r > self.mapw: r = self.mapw
+
+        for y in range(t, b):
+            for x in range(l, r):
+                cells.add((y, x))
+                #cells.append((y, x))
+        return cells
+
+    def update_car_sensing(self, nearby):
+        peoplepos = set([p.pos for p in self.people])
+        for p in nearby:
+            y, x = p
+            print(car.Car.samplesz.shape)
+            car.Car.samplesz[y][x] += 1
+            if p in peoplepos:
+                car.Car.count[y][x] += 1
+        car.Car.clicks += 1
+
+    def sense_region(self, _car):
+        nearby = self.get_enclosing_square(_car)
+        self.update_car_sensing(nearby)
 
     def step(self): #TODO: Change the order in which agents are called
         for p in self.people:
-            oldy, oldx = p.pos
+            oldpos = p.pos
             if not p.path:
                 destiny = self.get_free_pos(p.pos)
                 p.destiny = destiny
                 #print('pos:{}, destiny:{}'.format(p.pos, destiny))
                 p.create_path()
             p.step()
-            newy, newx = p.pos
-            self.count[oldy][oldx] -= 1
-            self.count[newy][newx] += 1
+            #newy, newx = p.pos
+            self.add_agents_count(oldpos, -1)
+            self.add_agents_count(p.pos, +1)
 
+        for c in self.cars:
+            oldpos = c.pos
+            if not c.path:
+                destiny = self.get_free_pos(c.pos)
+                c.destiny = destiny
+                #print('pos:{}, destiny:{}'.format(p.pos, destiny))
+                c.create_path()
+            c.step()
+            newy, newx = c.pos
+            self.add_agents_count(oldpos, -1)
+            self.add_agents_count(c.pos, +1)
+            self.sense_region(c)
         self.print_map()
+        self.print_sensed_density()
+        print('##########################################################')
 
 

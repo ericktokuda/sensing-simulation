@@ -9,7 +9,7 @@ class Person():
         self.destiny = destiny
         self.pos = pos
         self.status = 'going'
-        self.speed = 2
+        self.speed = 1
         self.path = []
         self.searchmap = searchmap
 
@@ -35,7 +35,6 @@ class Person():
         elif self.destiny[1] < self.pos[1]:
             newy -= 1
 
-        #return Point(newx, newy)
         return (newx, newy)
 
     def update_status(self):

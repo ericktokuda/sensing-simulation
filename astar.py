@@ -34,7 +34,7 @@ class Astar:
     def get_neighbours(self, pos):
         return self.get_4conn_neighbours(pos)
 
-    def get_4conn_neighbours(self, pos):
+    def get_4conn_neighbours(self, pos, youself=False):
         neighbours = []
 
         y, x = pos
@@ -49,6 +49,10 @@ class Astar:
 
         if y < self.height - 1:
             neighbours.append((y+1, x))
+
+        if youself:
+            neighbours.append((y, x))
+
         return neighbours
 
     def get_8conn_neighbours(self, pos):
