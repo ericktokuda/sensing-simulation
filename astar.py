@@ -73,20 +73,21 @@ class Astar:
                 neighbours.append(node)
         return neighbours
 
-    def recreate_path(self, current):
-        total_path = [current]
+    def recreate_path(self, current, skipfirst=True):
+        if skipfirst:
+            _path = []
+        else:
+            _path = [current]
         v = current
 
         while v in self.camefrom.keys():
             v = self.camefrom[v]
-            #vy, vx = v
-            total_path.append(v)
+            _path.append(v)
 
-        return total_path
+        return _path
 
-    def find_shortest_path(self):
+    def get_shortest_path(self):
         sy, sx = self.start
-        #print(self.start)
         heapq.heappush(self.openset, (self.h[sy][sx], self.start))
 
         while self.openset:

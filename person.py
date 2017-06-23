@@ -16,7 +16,7 @@ class Person():
     def create_path(self):
         heuristics = astar.compute_heuristics(self.searchmap, self.destiny)
         search = astar.Astar(heuristics, self.pos, self.destiny)
-        self.path = search.find_shortest_path()
+        self.path = search.get_shortest_path()
         if not self.path:
             print('Could not find path from {} to {}'. \
                      format(self.pos, self.destiny))

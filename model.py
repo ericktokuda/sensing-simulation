@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 import sys
+import itertools
 
 import person
 
 #############################################################
 class SensingModel():
     def __init__(self, npeople, ncars, searchmap, log):
-        #self.schedule = RandomActivation(self)  # Heuristics of order of steps
         self.rng = random.SystemRandom()
         h, w = searchmap.shape
         self.maph = h
@@ -19,16 +19,35 @@ class SensingModel():
         self.people = []
         self.cars = []
         self.count = np.full(searchmap.shape, 0)
-        #self.obstacles = obstacles
+        self.obstacles = self.parse_obstacles(searchmap)
         self.place_agents(npeople, ncars)
+        self.free = self.get_free(h, w, self.obstacles)
 
         #log.debug('Sensing model grid sizes w:{}, h:{}'. \
                  #format(self.grid.width, self.grid.height))
+
+##########################################################
+    def parse_obstacles(self, searchmap):
+        origind = np.where(searchmap == -1)
+        ind = map(tuple, np.transpose(origind))
+        return set(ind)
+
+    def get_free(self, h, w, obstacles):
+        yy = list(range(h))
+        xx = list(range(w))
+        all = set(list(itertools.product(yy,xx)))
+        return list(all.difference(obstacles))
+        #return all.difference(obstacles)
 
     def get_random_pos(self):
         x = self.rng.randrange(0, self.mapw)
         y = self.rng.randrange(0, self.maph)
         return (y, x)
+
+    def get_free_pos(self):
+        nfree = len(self.free)
+        rndidx = self.rng.randrange(0, nfree)
+        return self.free[rndidx]
 
     def place_people(self, npeople):
         for i in range(npeople):
@@ -50,18 +69,14 @@ class SensingModel():
     def print_map(self):
         for y in range(self.maph):
             for x in range(self.mapw):
-                #if self.grid.is_cell_empty((x,y)):
-                if self.count[y][x] == 0:
+                #if self.count[y][x] == 0:
+                if self.searchmap[y][x] == -1:
+                    print('x ', end='')
+                elif self.count[y][x] == 0:
                     print('_ ', end='')
                 else:
                     print('o ', end='')
             print()
-
-        #if self.status == 'reached':
-            #self.find_new_destiny()
-            #self.create_path()
-            #self.update_status()
-        #self.print_map()
 
     def place_person(self, person, pos):
         y, x = pos
@@ -86,14 +101,13 @@ class SensingModel():
         self.count[oldy][oldx] -= 1
 
     def step(self): #TODO: Change the order in which agents are called
-        #self.schedule.step()
         for p in self.people:
             oldy, oldx = p.pos
             if not p.path:
-                destiny = self.get_random_pos()
+                destiny = self.get_free_pos()
                 p.destiny = destiny
+                print('pos:{}, destiny:{}'.format(p.pos, destiny))
                 p.create_path()
-
                 #print('no path!')
             p.step()
             newy, newx = p.pos
