@@ -4,6 +4,7 @@ import numpy as np
 import random
 import sys
 import itertools
+import time
 
 import person
 
@@ -12,6 +13,7 @@ class SensingModel():
     def __init__(self, npeople, ncars, searchmap, log):
         self.rng = random.SystemRandom()
         h, w = searchmap.shape
+        self.log = log
         self.maph = h
         self.mapw = w
         self.searchmap = searchmap
@@ -19,44 +21,60 @@ class SensingModel():
         self.people = []
         self.cars = []
         self.count = np.full(searchmap.shape, 0)
-        self.obstacles = self.parse_obstacles(searchmap)
+        self.obstacles = self.parse_obstacles(searchmap, -1)
+        self.free = self.get_free_list(h, w, self.obstacles)
         self.place_agents(npeople, ncars)
-        self.free = self.get_free(h, w, self.obstacles)
 
         #log.debug('Sensing model grid sizes w:{}, h:{}'. \
                  #format(self.grid.width, self.grid.height))
 
 ##########################################################
-    def parse_obstacles(self, searchmap):
-        origind = np.where(searchmap == -1)
+    def parse_obstacles(self, searchmap, symbol=-1):
+        t0 = time.time()
+        origind = np.where(searchmap == symbol)
         ind = map(tuple, np.transpose(origind))
+        self.log.debug('Parse obstacles took {}.'.format(time.time() - t0))
         return set(ind)
 
-    def get_free(self, h, w, obstacles):
+    def get_free_list(self, h, w, obstacles):
+        """Return set of free positions. Free just means it doesnt
+        contain obstacles.
+    
+        Args:
+        h(int): height
+        w(int): width
+        obstables(list(list)): 
+    
+        Returns:
+        list: set of positions with no obstacles
+        """
+        
+        t0 = time.time()
         yy = list(range(h))
         xx = list(range(w))
         all = set(list(itertools.product(yy,xx)))
+        self.log.debug('Get free list took {}.'.format(time.time() - t0))
         return list(all.difference(obstacles))
-        #return all.difference(obstacles)
 
-    def get_random_pos(self):
-        x = self.rng.randrange(0, self.mapw)
-        y = self.rng.randrange(0, self.maph)
-        return (y, x)
-
-    def get_free_pos(self):
+    def get_free_pos(self, avoided=[]):
         nfree = len(self.free)
-        rndidx = self.rng.randrange(0, nfree)
-        return self.free[rndidx]
+        while True:
+            rndidx = self.rng.randrange(0, nfree)
+            chosen = self.free[rndidx]
+            if chosen != avoided: break
+        return chosen
 
     def place_people(self, npeople):
         for i in range(npeople):
-            pos = (2+i, 0+i)
-            destiny = (7, 17)
+            pos = self.get_free_pos()
+            destiny = self.get_free_pos(pos)
             self.lastid += 1
             a = person.Person(self.lastid, self, pos, destiny, self.searchmap)
             self.people.append(a)
+            t0 = time.time()
             a.create_path()
+            self.log.debug('Create_path of agent {} took {}.'. \
+                      format(self.lastid, time.time() - t0))
             self.place_person(a, pos)
 
     def place_cars(self, ncars):
@@ -104,11 +122,10 @@ class SensingModel():
         for p in self.people:
             oldy, oldx = p.pos
             if not p.path:
-                destiny = self.get_free_pos()
+                destiny = self.get_free_pos(p.pos)
                 p.destiny = destiny
-                print('pos:{}, destiny:{}'.format(p.pos, destiny))
+                #print('pos:{}, destiny:{}'.format(p.pos, destiny))
                 p.create_path()
-                #print('no path!')
             p.step()
             newy, newx = p.pos
             self.count[oldy][oldx] -= 1
