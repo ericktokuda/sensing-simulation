@@ -7,8 +7,8 @@ import model
 import time
 
 #############################################################
-ITERSNUM = 2000
-AGENTSNUM = 5
+ITERSNUM = 20000
+AGENTSNUM = 30
 CARSNUM = 3
 
 #############################################################
@@ -36,7 +36,7 @@ def main():
 
     for i in range(ITERSNUM):
         mymodel.step()
-        input('')
+        #sdens, tdens = mymodel.step(true, true)
 
 #############################################################
 if __name__ == '__main__':

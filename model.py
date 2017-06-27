@@ -13,7 +13,9 @@ import car
 class SensingModel():
     def __init__(self, npeople, ncars, searchmap, log):
         self.rng = random.SystemRandom()
+        plt.ion()
         h, w = searchmap.shape
+        self.tick = 0
         self.carrange = 3
         self.log = log
         self.maph = h
@@ -123,6 +125,48 @@ class SensingModel():
                 else :
                     print(count/s, end='')
             print()
+
+    def plot_sensed_density(self):
+        #toplot = np.full(searchmap.shape, 0)
+        yy = []
+        xx = []
+        cc = []
+        for y in range(self.maph):
+            for x in range(self.mapw):
+                count = float(car.Car.count[y][x])
+                s = car.Car.samplesz[y][x]
+                if s != 0:
+                    yy.append(y)
+                    xx.append(x)
+                    cc.append(count/s)
+                    print((cc))
+        #print(max(cc))
+            #print()
+        plt.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=2)
+        #print(xx)
+        #print(yy)
+        #print(cc)
+        plt.show()
+
+    def plot_real_density(self):
+        #toplot = np.full(searchmap.shape, 0)
+        for y in range(self.maph):
+            for x in range(self.mapw):
+                count = float(car.Car.count[y][x])
+                s = car.Car.samplesz[y][x]
+                if s != 0:
+                    yy.append(y)
+                    xx.append(x)
+                    cc.append(count/s)
+                    print((cc))
+        #print(max(cc))
+            #print()
+        plt.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=2)
+        #print(xx)
+        #print(yy)
+        #print(cc)
+        plt.show()
+
     def add_agents_count(self, pos, delta=1):
         y, x = pos
         self.count[y][x] += delta
@@ -172,7 +216,7 @@ class SensingModel():
         peoplepos = set([p.pos for p in self.people])
         for p in nearby:
             y, x = p
-            print(car.Car.samplesz.shape)
+            #print(car.Car.samplesz.shape)
             car.Car.samplesz[y][x] += 1
             if p in peoplepos:
                 car.Car.count[y][x] += 1
@@ -207,8 +251,13 @@ class SensingModel():
             self.add_agents_count(oldpos, -1)
             self.add_agents_count(c.pos, +1)
             self.sense_region(c)
-        self.print_map()
-        self.print_sensed_density()
+        #self.print_map()
+        #self.print_sensed_density()
+        if self.tick % 1000 == 0:
+            self.plot_sensed_density()
+            input('')
+        self.tick += 1
+
         print('##########################################################')
 
 
