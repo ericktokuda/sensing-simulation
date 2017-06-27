@@ -9,9 +9,9 @@ import time
 import view
 
 #############################################################
-ITERSNUM = 20000
-AGENTSNUM = 30
-CARSNUM = 3
+ITERSNUM = 100
+AGENTSNUM = 300
+CARSNUM = 300
 
 #############################################################
 def main():
@@ -30,15 +30,13 @@ def main():
 
     h, w = searchmap.shape
     mymodel = model.SensingModel(AGENTSNUM, CARSNUM, searchmap, log)
-    myview = view.View(searchmap, log)
+    #myview = view.View(searchmap, log)
 
     for i in range(ITERSNUM):
-        mymodel.step()
-        #tdens = mymodel.get_true_density()
-        sdens = mymodel.get_sensed_density()
-        #pprint.pprint(sdens)
-        #myview.plot_ascii(sdens)
-        myview.plot_matplotlib(sdens)
+        mymodel.step(True)
+        tdens, sdens = mymodel.get_densities()
+        #myview.plot_densities(tdens, sdens)
+        print(mymodel.denserror)
         input('')
 
 #############################################################
