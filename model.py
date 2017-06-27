@@ -8,6 +8,7 @@ import time
 
 import person
 import car
+import utils
 
 #############################################################
 class SensingModel():
@@ -25,40 +26,42 @@ class SensingModel():
         self.people = []
         self.cars = []
         self.count = np.full(searchmap.shape, 0)
-        self.obstacles = self.parse_obstacles(searchmap, -1)
-        self.free = self.get_free_list(h, w, self.obstacles)
+        #self.obstacles = self.parse_obstacles(searchmap, -1)
+        self.obstacles = utils.get_symbol_positions(searchmap, -1)
+        #self.free = self.get_free_list(h, w, self.obstacles)
+        self.free = utils.get_difference(h, w, self.obstacles)
         self.place_agents(npeople, ncars)
 
         #log.debug('Sensing model grid sizes w:{}, h:{}'. \
                  #format(self.grid.width, self.grid.height))
 
 ##########################################################
-    def parse_obstacles(self, searchmap, symbol=-1):
-        t0 = time.time()
-        origind = np.where(searchmap == symbol)
-        ind = map(tuple, np.transpose(origind))
-        self.log.debug('Parse obstacles took {}.'.format(time.time() - t0))
-        return set(ind)
+    #def parse_obstacles(self, searchmap, symbol=-1):
+        #t0 = time.time()
+        #origind = np.where(searchmap == symbol)
+        #ind = map(tuple, np.transpose(origind))
+        #self.log.debug('Parse obstacles took {}.'.format(time.time() - t0))
+        #return set(ind)
 
-    def get_free_list(self, h, w, obstacles):
-        """Return set of free positions. Free just means it doesnt
-        contain obstacles.
+    #def get_free_list(self, h, w, obstacles):
+        #"""Return set of free positions. Free just means it doesnt
+        #contain obstacles.
     
-        Args:
-        h(int): height
-        w(int): width
-        obstables(list(list)): 
+        #Args:
+        #h(int): height
+        #w(int): width
+        #obstables(list(list)): 
     
-        Returns:
-        list: set of positions with no obstacles
-        """
+        #Returns:
+        #list: set of positions with no obstacles
+        #"""
         
-        t0 = time.time()
-        yy = list(range(h))
-        xx = list(range(w))
-        all = set(list(itertools.product(yy,xx)))
-        self.log.debug('Get free list took {}.'.format(time.time() - t0))
-        return list(all.difference(obstacles))
+        #t0 = time.time()
+        #yy = list(range(h))
+        #xx = list(range(w))
+        #all = set(list(itertools.product(yy,xx)))
+        #self.log.debug('Get free list took {}.'.format(time.time() - t0))
+        #return list(all.difference(obstacles))
 
     def get_free_pos(self, avoided=[]):
         nfree = len(self.free)
@@ -126,46 +129,26 @@ class SensingModel():
                     print(count/s, end='')
             print()
 
-    def plot_sensed_density(self):
-        #toplot = np.full(searchmap.shape, 0)
-        yy = []
-        xx = []
-        cc = []
-        for y in range(self.maph):
-            for x in range(self.mapw):
-                count = float(car.Car.count[y][x])
-                s = car.Car.samplesz[y][x]
-                if s != 0:
-                    yy.append(y)
-                    xx.append(x)
-                    cc.append(count/s)
-                    print((cc))
-        #print(max(cc))
-            #print()
-        plt.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=2)
-        #print(xx)
-        #print(yy)
-        #print(cc)
-        plt.show()
+    def get_sensed_density(self):
+        if self.tick == 0: return np.full(self.searchmap.shape, -1)
 
-    def plot_real_density(self):
-        #toplot = np.full(searchmap.shape, 0)
-        for y in range(self.maph):
-            for x in range(self.mapw):
-                count = float(car.Car.count[y][x])
-                s = car.Car.samplesz[y][x]
+        sdens = np.full(self.searchmap.shape, 0)
+
+        for p in self.people:
+            y, x = p.pos
+            sdens[y][x] += 1
+
+        return sdens/float(self.tick)
+
+    def get_true_density(self):
+        tdens = np.full(self.searchmap.shape, -1)
+        for j in range(self.maph):
+            for i in range(self.mapw):
+                count = float(car.Car.count[j][i])
+                s = car.Car.samplesz[j][i]
                 if s != 0:
-                    yy.append(y)
-                    xx.append(x)
-                    cc.append(count/s)
-                    print((cc))
-        #print(max(cc))
-            #print()
-        plt.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=2)
-        #print(xx)
-        #print(yy)
-        #print(cc)
-        plt.show()
+                    tdens[j][i] = count/s
+        return tdens
 
     def add_agents_count(self, pos, delta=1):
         y, x = pos
@@ -244,20 +227,13 @@ class SensingModel():
             if not c.path:
                 destiny = self.get_free_pos(c.pos)
                 c.destiny = destiny
-                #print('pos:{}, destiny:{}'.format(p.pos, destiny))
                 c.create_path()
             c.step()
             newy, newx = c.pos
             self.add_agents_count(oldpos, -1)
             self.add_agents_count(c.pos, +1)
             self.sense_region(c)
-        #self.print_map()
-        #self.print_sensed_density()
-        if self.tick % 1000 == 0:
-            self.plot_sensed_density()
-            input('')
-        self.tick += 1
-
         print('##########################################################')
+        self.tick += 1
 
 

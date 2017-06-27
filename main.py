@@ -2,9 +2,11 @@ import argparse
 import logging
 import numpy as np
 from numpy import genfromtxt
+import pprint
 
 import model
 import time
+import view
 
 #############################################################
 ITERSNUM = 20000
@@ -26,17 +28,18 @@ def main():
     searchmap = np.load(filename)
     log.debug('Loading {} took {}.'.format(filename, time.time() - t0))
 
-    #import matplotlib.pyplot as plt
-    #plt.imshow(searchmap)
-    #plt.ion()
-    #plt.show()
-
     h, w = searchmap.shape
     mymodel = model.SensingModel(AGENTSNUM, CARSNUM, searchmap, log)
+    myview = view.View(searchmap, log)
 
     for i in range(ITERSNUM):
         mymodel.step()
-        #sdens, tdens = mymodel.step(true, true)
+        #tdens = mymodel.get_true_density()
+        sdens = mymodel.get_sensed_density()
+        #pprint.pprint(sdens)
+        #myview.plot_ascii(sdens)
+        myview.plot_matplotlib(sdens)
+        input('')
 
 #############################################################
 if __name__ == '__main__':
