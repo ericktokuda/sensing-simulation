@@ -2,6 +2,9 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import utils
+import argparse
+import mpld3
+import mpld3.plugins
 
 
 #############################################################
@@ -50,4 +53,42 @@ class View():
     def plot_densities(self, density1, density2):
         self.plot_matplotlib(density1, self.axarr[0], False)
         self.plot_matplotlib(density2, self.axarr[1], False)
-        self.f.show()
+        #self.f.show()
+
+#############################################################
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Sensing viewer')
+    parser.add_argument('means', help='means npy')
+    parser.add_argument('vars', help='vars npy')
+    return parser.parse_args()
+
+def main():
+    parser = argparse.ArgumentParser(description='Sensing model')
+    args = parse_arguments()
+
+    _means = np.load(args.means)
+    _vars = np.load(args.vars)
+
+    fig, ax = plt.subplots(figsize=(12,8))
+    ax.grid(True, alpha=0.3)
+    for carsnum in range(0, _means.shape[1]):
+        ax.errorbar(range(_means.shape[0]), _means[:, carsnum],
+                     _vars[:, carsnum], alpha=0.6, label='{}cars'.format(carsnum+1))
+
+    #handles, labels = ax.get_legend_handles_labels() # return lines and labels
+    #interactive_legend = mpld3.plugins.InteractiveLegendPlugin(zip(handles, ax.collections),
+                                                         #labels,
+                                                         #alpha_unsel=0.5,
+                                                         #alpha_over=1.5, 
+                                                         #start_visible=True)
+    #mpld3.plugins.connect(fig, interactive_legend)
+
+
+    ax.set_xlabel('Ticks')
+    ax.set_ylabel('Error')
+    ax.set_yscale("log", nonposy='clip')
+    ax.legend()
+    mpld3.show()
+
+if __name__ == '__main__':
+    main()

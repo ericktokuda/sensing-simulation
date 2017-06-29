@@ -9,6 +9,7 @@ import time
 import person
 import car
 import utils
+import sensing
 
 #############################################################
 class SensingModel():
@@ -25,7 +26,11 @@ class SensingModel():
         self.lastid = -1
         self.people = []
         self.cars = []
-        self.count = np.full(searchmap.shape, 0)
+        #self.count = np.full(searchmap.shape, 0)
+        self.truesensor = sensing.Sensor(searchmap.shape)
+        self.tdens = np.full(searchmap.shape, 0.0)
+        self.fleetsensor = sensing.Sensor(searchmap.shape)
+        self.sdens = np.full(searchmap.shape, 0.0)
         self.obstacles = utils.get_symbol_positions(searchmap, -1)
         self.free = utils.get_difference(h, w, self.obstacles)
         self.place_agents(npeople, ncars)
@@ -90,7 +95,7 @@ class SensingModel():
 
         for j in range(self.maph):
             for i in range(self.mapw):
-                count = float(self.count[j][i])
+                count = float(self.truesensor.count[j][i])
                 tdens[j][i] = count / float(self.tick)
         return tdens
 
@@ -102,8 +107,8 @@ class SensingModel():
 
         for j in range(self.maph):
             for i in range(self.mapw):
-                count = float(car.Car.count[j][i])
-                s = car.Car.samplesz[j][i]
+                count = float(self.fleetsensor.count[j][i])
+                s = self.fleetsensor.samplesz[j][i]
 
                 if s != 0: sdens[j][i] = count / float(s)
         return sdens
@@ -113,7 +118,7 @@ class SensingModel():
 
     def add_agents_count(self, pos, delta=1):
         y, x = pos
-        self.count[y][x] += delta
+        self.truesensor.count[y][x] += delta
 
     def place_person(self, person, pos):
         self.people.append(person)
@@ -159,8 +164,8 @@ class SensingModel():
         peoplepos = [p.pos for p in self.people]
         for p in nearby:
             y, x = p
-            car.Car.samplesz[y][x] += 1
-            car.Car.count[y][x] += peoplepos.count(p)
+            self.fleetsensor.samplesz[y][x] += 1
+            self.truesensor.count[y][x] += peoplepos.count(p)
         car.Car.clicks += 1
 
     def sense_region(self, _car):
@@ -217,6 +222,7 @@ class SensingModel():
             c.step()
             newy, newx = c.pos
             self.sense_region(c)
+            #self.fleetsensor.samplesz
         self.tick += 1
 
         if update_densities:

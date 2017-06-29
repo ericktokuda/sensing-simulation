@@ -52,9 +52,6 @@ class Car():
         else:
             self.status = 'going'
 
-        #print('el:{}, first:{}, last:{}'.format(self.pos, nearby[0], nearby[-1]))
-        
-
     def step(self):
         self.pos = self.path.pop()
         #self.sense_region()
