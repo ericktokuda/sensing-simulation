@@ -7,78 +7,69 @@ import heapq
 import math
 import numpy as np
 import pprint
+import utils
+import dfs
 
 MAX = 9999999
 
 ##########################################################
 
 class Astar:
-    """Astar implementation
-    Be careful because I invert the input to have first coordinate as horizontal axis
-    (Thats why I need to invert the coordinates in some parts)
+    """Astar implementation by tokudaek
     """
 
-    def __init__(self, heuristics, s, g):
-        self.height, self.width = heuristics.shape
-        sy, sx = s
-        gy, gx = g
-        self.closedset = set()
-        self.openset = []
+    def __init__(self, graph, heuristics, s, g):
+        #print(s)
+        self.visitted = set()
+        self.discovered = []
         self.start = s
         self.goal = g
         self.camefrom = {}
         self.h = heuristics
-        self.g = np.full(heuristics.shape, MAX)
-        self.g[sy][sx] = 0
+        self.g = dict.fromkeys(heuristics.keys(), MAX)
+        self.g[s] = 0
+        self.graph = graph
 
     def get_neighbours(self, pos):
+        """Abstract method to find neighbourhood
+    
+        Args:
+        pos(2uple): (y,x) position
+
+        Returns:
+        set: neighbours
+        """
         return self.get_4conn_neighbours(pos)
 
-    def get_4conn_neighbours(self, pos, youself=False):
+    def get_4conn_neighbours(self, pos, yourself=False):
+        """ Get diamond neighbours. Do _not_ take into account borders conditions
+
+        Args:
+        pos(2uple): (y,x) position
+        yourself(bool): True if should include pos
+
+        Returns:
+        set: neighbours
+        """
+
         neighbours = []
-
         y, x = pos
-        if x > 0:
-            neighbours.append((y, x-1))
-
-        if x < self.width - 1:
-            neighbours.append((y, x+1))
-
-        if y > 0:
-            neighbours.append((y-1, x))
-
-        if y < self.height - 1:
-            neighbours.append((y+1, x))
-
-        if youself:
-            neighbours.append((y, x))
-
+        neighbours.append((y, x-1), (y, x+1), (y-1, x), (y+1, x)) 
+        if yourself: neighbours.append((y, x))
         return neighbours
 
-    def get_8conn_neighbours(self, pos):
-        neighbours = []
-
-        y, x = pos
-        def get_deltas_1d(x, lastpos):
-            if x == 0:
-                return [0, 1]
-            elif x == lastpos:
-                return [-1, 0]
-            else:
-                return [-1, 0, 1]
-
-        dxs = get_deltas_1d(pos[0], self.width - 1)
-        dys = get_deltas_1d(pos[1], self.height - 1)
-
-        for dx in dxs:
-            for dy in dys:
-                if dx == 0 and dy == 0: continue
-                node = (pos[0] + dx, pos[1] + dy)
-                neighbours.append(node)
-        return neighbours
-
-    def recreate_path(self, current, skipfirst=True):
-        if skipfirst:
+    def recreate_path(self, current, skiplast=True):
+        """Recreate A* path
+    
+        Args:
+        current(2uple): current position, generally start position
+        skiplast(bool): should include @current in the list
+    
+        Returns:
+        list: positions ordered in the path
+    
+        """
+        if skiplast:
             _path = []
         else:
             _path = [current]
@@ -88,121 +79,152 @@ class Astar:
             v = self.camefrom[v]
             _path.append(v)
 
-        return _path
+        return _path[:-1]
 
-    def get_shortest_path(self):
-        sy, sx = self.start
-        heapq.heappush(self.openset, (self.h[sy][sx], self.start))
+    def get_path(self):
+        """Compute A* path
+    
+        Returns:
+        list: positions ordered in the path
+        """
+    
+        heapq.heappush(self.discovered, (self.h[self.start], self.start))
 
-        while self.openset:
-            current = heapq.heappop(self.openset)[1]
+        while self.discovered:
+            current = heapq.heappop(self.discovered)[1]
 
             if current == self.goal:
-                return self.recreate_path(current)
+                return self.recreate_path(current, False)
 
-            self.closedset.add(current)
+            self.visitted.add(current)
 
-            for v in self.get_neighbours(current):
-                vy, vx = v
-                if v in self.closedset: continue
+            for cost, v in self.graph[current]:
+                if v in self.visitted: continue
 
-                nodes = [x[1] for x in self.openset]
+                nodes = [x[1] for x in self.discovered]
 
-                dist = self.g[current[0]][current[1]] + 1
-                if dist >= self.g[vy][vx]:
+                dist = self.g[current] + cost
+
+                if dist >= self.g[v]:
                     if v not in nodes:
-                        heapq.heappush(self.openset, (MAX, v))
+                        heapq.heappush(self.discovered, (MAX, v))
                     continue
 
                 self.camefrom[v] = current
-                self.g[vy][vx] = dist
+                self.g[v] = dist
 
-                neighcost = self.g[vy][vx] + self.h[vy][vx]
+                neighcost = self.g[v] + self.h[v]
 
                 if v not in nodes:
-                    heapq.heappush(self.openset, (neighcost, v))
+                    heapq.heappush(self.discovered, (neighcost, v))
         return []
     
 ##########################################################
-def compute_heuristics(searchmap, goal):
-    s = searchmap
+def get_n_reachable_crossings(graph, start, crossings, maxcrossings=2):
+    ncrossings = []
+    visitted = set()
+    _crossings = crossings.copy()
 
-    gy, gx = goal
-    height, width = s.shape
+    if start in _crossings: _crossings.discard(start)
 
-    h = np.empty(s.shape)
+    for i in range(maxcrossings):
+        _dfs = dfs.Dfs(graph, start, _crossings, visitted)
+        _path = _dfs.get_path()
 
-    for i in range(height):
-        distx = math.fabs(i-gy)
-        for j in range(width):
-            v = s[i][j]
-            if v == -1: # obstacle
-                h[i][j] = MAX
-            elif v == 0: # normal
-                disty = math.fabs(j-gx)
-                h[i][j] = distx + disty
-            else: # more difficult place
-                disty = math.fabs(j-gx)
-                h[i][j] = distx + disty + v
-    return h
+        if not _path: break
+
+        v = _path[0]
+        cost = len(_path)
+        #print(visitted)
+        visitted.add(v)
+        ncrossings.append((cost, v))
+        _dfs.update_avoided(visitted)
+        _crossings.discard(v)
+
+    return ncrossings
+
+
+##########################################################
+def get_paths_from_all_crossings(graph, crossings):
+    crossingneighbour = {}
+    for crss in crossings:
+        neighbours = get_n_reachable_crossings(graph, crss, crossings, 10)
+        crossingneighbour[crss] = neighbours
+
+    paths = {}
+    crossingpaths = {}
+    for crss1 in crossings: # Dummy way, I am recomputing many times
+        crossingpaths[crss1] = {}
+        for crss2 in crossings:
+            if crss1 == crss2: continue
+            heuristics = utils.compute_heuristics(crossingneighbour, crss2)
+            astar = Astar(crossingneighbour, heuristics, crss1, crss2)
+            finalpath = astar.get_path()
+            crossingpaths[crss1][crss2] = finalpath
+
+    return crossingpaths
+
+##########################################################
+def main_old():
+    import time
+    t0 = time.time()
+
+    start = (4, 7)
+    goal  = (13, 30)
+    image = 'maps/toy3.png'
+
+    graph = utils.get_adjmatrix_from_image(image)
+    heuristics = utils.compute_heuristics(graph, goal)
+    astar = Astar(graph, heuristics, start, goal)
+    final_path = astar.get_path()
+    print(final_path)
+
+    print('Total time:{}'.format(time.time() - t0))
+
 
 ##########################################################
 def main():
-    #start = (0, 2)
-    #goal  = (13, 9)
+    import time
+    t0 = time.time()
 
-    start = (2, 0)
-    goal  = (7, 17)
+    start = (4, 14)
+    goal  = (13, 30)
+    image = 'maps/toy3.png'
+    print(start)
+    print(goal)
 
-    searchmap1 = np.array([
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]])
+    crossings = utils.get_crossings_from_image(image)
+    graph = utils.get_adjmatrix_from_image(image)
+    crossingpaths = get_paths_from_all_crossings(graph, crossings)
+    #pprint.pprint(crossingpaths)
 
-    # With obstacles
-    searchmap2 = np.array([ 
-        # 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #0
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #2
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #3
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #4
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #5
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #6
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #7
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #8
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #9
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]) #0
+    # find the path between start and end crossings
+    startcrossings = get_n_reachable_crossings(graph, start, crossings)
+    goalcrossings = get_n_reachable_crossings(graph, goal, crossings)
+    startcrossing = startcrossings[0]
+    goalcrossing = goalcrossings[0]
+    print(crossingpaths[startcrossing[1]][goalcrossing[1]])
 
-    searchmap3 = np.array([
-        # 0, 1, 2, 3, 4, 5, 6, 7, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #0
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #1
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #2
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #3
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #4
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #5
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #6
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #7
-        [ 0, 0, 0,-1,-1,-1,-1,-1, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1,-1,-1,-1,-1,-1, 0, 0,-1, 0, 0], #8
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], #9
-        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]) #0
+    # path from start to startcrossing
+    heuristics = utils.compute_heuristics(graph, startcrossing[1])
+    astar = Astar(graph, heuristics, start, startcrossing[1])
+    final_path = astar.get_path()
+    print(final_path)
 
-    heuristics = compute_heuristics(searchmap2, goal)
 
-    astar = Astar(heuristics, start, goal)
-    final_path = astar.find_shortest_path()
-    pprint.pprint(final_path)
-    return
+    # path from endcrossing to end
+    heuristics = utils.compute_heuristics(graph, goal)
+    astar = Astar(graph, heuristics, goalcrossing[1], goal)
+    final_path = astar.get_path()
+    print(final_path)
 
+
+    #heuristics = utils.compute_heuristics(graph, goal)
+    #astar = Astar(graph, heuristics, start, goal)
+    #final_path = astar.get_path()
+    #print(final_path)
+
+    print('Total time:{}'.format(time.time() - t0))
 if __name__ == "__main__":
     main()
 
