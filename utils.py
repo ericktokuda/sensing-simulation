@@ -156,7 +156,5 @@ def get_adjmatrix_from_image(image):
 ##########################################################
 def get_crossings_from_image(image):
     searchmap = parse_streets_from_image(image)
-    #import pprint
-    #pprint.pprint(searchmap)
     return find_crossings_dummy(searchmap)
 

@@ -157,8 +157,8 @@ def get_paths_from_all_crossings(graph, crossings):
         crossingpaths[crss1] = {}
         for crss2 in crossings:
             if crss1 == crss2: continue
-            heuristics = utils.compute_heuristics(crossingneighbour, crss2)
-            astar = Astar(crossingneighbour, heuristics, crss1, crss2)
+            heuristics = utils.compute_heuristics(graph, crss2)
+            astar = Astar(graph, heuristics, crss1, crss2)
             finalpath = astar.get_path()
             crossingpaths[crss1][crss2] = finalpath
 
@@ -187,8 +187,12 @@ def main():
     import time
     t0 = time.time()
 
-    start = (4, 14)
-    goal  = (13, 30)
+    #start = (4, 10)
+    #goal  = (4, 20)
+    #start = (4, 10)
+    #goal  = (4, 18)
+    start = (4, 10)
+    goal  = (4, 22)
     image = 'maps/toy3.png'
     print(start)
     print(goal)
@@ -201,28 +205,49 @@ def main():
     # find the path between start and end crossings
     startcrossings = get_n_reachable_crossings(graph, start, crossings)
     goalcrossings = get_n_reachable_crossings(graph, goal, crossings)
-    startcrossing = startcrossings[0]
-    goalcrossing = goalcrossings[0]
-    print(crossingpaths[startcrossing[1]][goalcrossing[1]])
+    #startcrossing = startcrossings[0]
+    #goalcrossing = goalcrossings[0]
+    sss = [ x[1] for x in startcrossings ]
+    ggg = [ x[1] for x in startcrossings ]
 
-    # path from start to startcrossing
-    heuristics = utils.compute_heuristics(graph, startcrossing[1])
-    astar = Astar(graph, heuristics, start, startcrossing[1])
-    final_path = astar.get_path()
-    print(final_path)
+    common = []
+    for v in sss:
+        if v in ggg: common.append(v)
+
+    if len(common) == 0:
+        # path from start to startcrossing
+        heuristics = utils.compute_heuristics(graph, startcrossing[1])
+        astar = Astar(graph, heuristics, start, startcrossing[1])
+        final_path = astar.get_path()
+        print(final_path)
 
 
-    # path from endcrossing to end
-    heuristics = utils.compute_heuristics(graph, goal)
-    astar = Astar(graph, heuristics, goalcrossing[1], goal)
-    final_path = astar.get_path()
-    print(final_path)
+        print(crossingpaths[startcrossing[1]][goalcrossing[1]])
+        # path from endcrossing to end
+        heuristics = utils.compute_heuristics(graph, goal)
+        astar = Astar(graph, heuristics, goalcrossing[1], goal)
+        final_path = astar.get_path()
+        print(final_path)
+    elif len(common) == 1:
+        # path from start to startcrossing
+        heuristics = utils.compute_heuristics(graph, common[0])
+        astar = Astar(graph, heuristics, start, common[0])
+        final_path = astar.get_path()
+        print(final_path)
+
+        # path from endcrossing to end
+        heuristics = utils.compute_heuristics(graph, goal)
+        astar = Astar(graph, heuristics, common[0], goal)
+        final_path = astar.get_path()
+        print(final_path)
+    elif len(common) == 2:
+        heuristics = utils.compute_heuristics(graph, goal)
+        astar = Astar(graph, heuristics, start, goal)
+        final_path = astar.get_path()
+        print(final_path)
+        
 
 
-    #heuristics = utils.compute_heuristics(graph, goal)
-    #astar = Astar(graph, heuristics, start, goal)
-    #final_path = astar.get_path()
-    #print(final_path)
 
     print('Total time:{}'.format(time.time() - t0))
 if __name__ == "__main__":
