@@ -1,13 +1,16 @@
 import astar
 import numpy as np
+import utils
+from cachedsearch import Cachedsearch
 
 #############################################################
 class Car():
+    search = []
     count = []
     samplesz = []
     clicks = 0
 
-    def __init__(self, _id, model, pos, destiny, searchmap, _range):
+    def __init__(self, _id, model, pos, destiny, searchmap, crossings, _range):
         self.id = _id
         self.destiny = destiny
         self.pos = pos
@@ -16,16 +19,24 @@ class Car():
         self.path = []
         self.searchmap = searchmap
         self.range = _range
+        #self.crossings = crossings
         if Car.count == []: self.initialize_count()
+        if not Car.search:
+            Car.search = Cachedsearch(searchmap, crossings)
 
     def initialize_count(self):
-        Car.count = np.full(self.searchmap.shape, 0)
-        Car.samplesz = np.full(self.searchmap.shape, 0)
+        mapshape = utils.get_mapshape_from_searchmap(self.searchmap)
+        Car.count = np.full(mapshape, 0)
+        print('mapshape:')
+        print(mapshape)
+        #print(Car.count.shape)
+        Car.samplesz = np.full(mapshape, 0)
 
     def create_path(self):
-        heuristics = astar.compute_heuristics(self.searchmap, self.destiny)
-        search = astar.Astar(heuristics, self.pos, self.destiny)
-        self.path = search.get_shortest_path()
+        heuristics = utils.compute_heuristics(self.searchmap, self.destiny)
+        #search = astar.Astar(heuristics, self.pos, self.destiny)
+        #self.path = search.get_shortest_path()
+        self.path = self.search.get_path(self.pos, self.destiny)
         if not self.path:
             print('Could not find path from {} to {}'. \
                      format(self.pos, self.destiny))
@@ -53,5 +64,6 @@ class Car():
             self.status = 'going'
 
     def step(self):
+        #print('car step')
         self.pos = self.path.pop()
         #self.sense_region()

@@ -12,6 +12,9 @@ def get_symbol_positions(searchmap, symbol=-1):
     t0 = time.time()
     origind = np.where(searchmap == symbol)
     ind = map(tuple, np.transpose(origind))
+    import pprint
+    #print('bla')
+    pprint.pprint((searchmap))
     return set(ind)
 
     #@staticmethod
@@ -158,3 +161,19 @@ def get_crossings_from_image(image):
     searchmap = parse_streets_from_image(image)
     return find_crossings_dummy(searchmap)
 
+def get_mapshape_from_searchmap(hashtable):
+    """Suppose keys have the form (x, y). We want max(x), max(y)
+    such that not necessarily the key (max(x), max(y)) exists
+
+    Args:
+    hashtable(dict): key-value pairs
+
+    Returns:
+    int, int: max values for the keys
+
+    Raises:
+    """
+    ks = hashtable.keys()
+    h = max([y[0] for y in ks])
+    w = max([x[1] for x in ks])
+    return h+1, w+1

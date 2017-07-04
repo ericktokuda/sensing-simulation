@@ -192,7 +192,7 @@ def main():
     #start = (4, 10)
     #goal  = (4, 18)
     start = (4, 10)
-    goal  = (4, 22)
+    goal  = (4, 11)
     image = 'maps/toy3.png'
     print(start)
     print(goal)

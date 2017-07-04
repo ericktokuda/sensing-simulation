@@ -1,9 +1,12 @@
 import astar
+import utils
+from cachedsearch import Cachedsearch
 
 #############################################################
 class Person():
+    search = []
 
-    def __init__(self, _id, model, pos, destiny, searchmap):
+    def __init__(self, _id, model, pos, destiny, searchmap, crossings):
         #super().__init__(uid, model)
         self.id = _id
         self.destiny = destiny
@@ -13,10 +16,14 @@ class Person():
         self.path = []
         self.searchmap = searchmap
 
+        if not Person.search:
+            Person.search = Cachedsearch(searchmap, crossings)
+
     def create_path(self):
-        heuristics = astar.compute_heuristics(self.searchmap, self.destiny)
-        search = astar.Astar(heuristics, self.pos, self.destiny)
-        self.path = search.get_shortest_path()
+        #heuristics = utils.compute_heuristics(self.searchmap, self.destiny)
+        #search = astar.Astar(heuristics, self.pos, self.destiny)
+        #self.path = search.get_shortest_path()
+        self.path = self.search.get_path(self.pos, self.destiny)
         if not self.path:
             print('Could not find path from {} to {}'. \
                      format(self.pos, self.destiny))
@@ -45,6 +52,7 @@ class Person():
 
     def step(self):
         #pass
+        #print('person step')
         self.pos = self.path.pop()
         #nx, ny = newpos
         #self.model.move_person(self, newpos)

@@ -13,26 +13,27 @@ import sensing
 
 #############################################################
 class SensingModel():
-    def __init__(self, npeople, ncars, searchmap, log):
+    def __init__(self, npeople, ncars, searchmap, crossings, log):
         self.rng = random.SystemRandom()
         plt.ion()
-        h, w = searchmap.shape
+        #h, w = searchmap.shape
+        h, w = utils.get_mapshape_from_searchmap(searchmap)
+        self.mapshape = (h, w)
         self.tick = 0
         self.carrange = 3
         self.log = log
         self.maph = h
         self.mapw = w
         self.searchmap = searchmap
+        self.crossings = crossings
         self.lastid = -1
         self.people = []
         self.cars = []
-        #self.count = np.full(searchmap.shape, 0)
-        self.truesensor = sensing.Sensor(searchmap.shape)
-        self.tdens = np.full(searchmap.shape, 0.0)
-        self.fleetsensor = sensing.Sensor(searchmap.shape)
-        self.sdens = np.full(searchmap.shape, 0.0)
-        self.obstacles = utils.get_symbol_positions(searchmap, -1)
-        self.free = utils.get_difference(h, w, self.obstacles)
+        self.truesensor = sensing.Sensor(self.mapshape)
+        self.tdens = np.full(self.mapshape, 0.0)
+        self.fleetsensor = sensing.Sensor(self.mapshape)
+        self.sdens = np.full(self.mapshape, 0.0)
+        self.free = list(self.searchmap.keys())
         self.place_agents(npeople, ncars)
         self.denserror = -1
 
@@ -42,6 +43,7 @@ class SensingModel():
             rndidx = self.rng.randrange(0, nfree)
             chosen = self.free[rndidx]
             if chosen != avoided: break
+        #print(len(self.free))
         return chosen
 
     def place_people(self, npeople):
@@ -49,7 +51,7 @@ class SensingModel():
             pos = self.get_free_pos()
             destiny = self.get_free_pos(pos)
             self.lastid += 1
-            a = person.Person(self.lastid, self, pos, destiny, self.searchmap)
+            a = person.Person(self.lastid, self, pos, destiny, self.searchmap, self.crossings)
             self.people.append(a)
             t0 = time.time()
             a.create_path()
@@ -63,7 +65,7 @@ class SensingModel():
             destiny = self.get_free_pos(pos)
             self.lastid += 1
             a = car.Car(self.lastid, self, pos, destiny,
-                        self.searchmap, _range)
+                        self.searchmap, self.crossings, _range)
             self.cars.append(a)
             t0 = time.time()
             a.create_path()
@@ -90,8 +92,8 @@ class SensingModel():
             print()
 
     def compute_true_density(self):
-        if self.tick == 0: return np.full(self.searchmap.shape, -1)
-        tdens = np.full(self.searchmap.shape, 0)
+        if self.tick == 0: return np.full(self.mapshape, -1)
+        tdens = np.full(self.mapshape, 0)
 
         for j in range(self.maph):
             for i in range(self.mapw):
@@ -103,7 +105,7 @@ class SensingModel():
         self.tdens = self.compute_true_density()
 
     def compute_sensed_density(self):
-        sdens = np.full(self.searchmap.shape, -1)
+        sdens = np.full(self.mapshape, -1)
 
         for j in range(self.maph):
             for i in range(self.mapw):

@@ -9,6 +9,7 @@ import threading
 import model
 import time
 import view
+import utils
 
 #############################################################
 
@@ -30,7 +31,7 @@ def run_multiple_cars():
 
     TICKSNUM = 100
     TRIALS = 5
-    AGENTSNUM = 30
+    AGENTSNUM = 3000
     CARSNUM = 10
 
     args = parse_arguments()
@@ -39,12 +40,23 @@ def run_multiple_cars():
     logging.basicConfig(level=lvl, format=fmt, datefmt='%I:%M:%S')
     log = logging.getLogger(__name__)
     log.debug('Start.')
-    filename = args.map if args.map else 'maps/toy2.npy'
-    searchmap = np.load(filename)
+    filename = args.map if args.map else 'maps/toy3.png'
+    #searchmap = np.load(filename)
     log.debug('{} loaded.'.format(filename))
     outdir = '/tmp/'
 
-    h, w = searchmap.shape
+    crossings = utils.get_crossings_from_image(filename)
+    #import pprint
+    #pprint.pprint(crossings)
+    searchmap = utils.get_adjmatrix_from_image(filename)
+    #input()
+    #ks = searchmap.keys()
+    #import pprint
+    #pprint.pprint(ks)
+    #return
+    ##h = 
+    #h, w = searchmap.shape
+    h, w = utils.get_mapshape_from_searchmap(searchmap)
 
     threads = []
     _means = np.full((TICKSNUM, CARSNUM - 1), 0.0)
@@ -55,7 +67,7 @@ def run_multiple_cars():
         err = np.full((TICKSNUM, TRIALS), 0.0)
 
         def one_run(AGENTSNUM, TICKSNUM, carsnum, _iter, searchmap, log, outdir):
-            mymodel = model.SensingModel(AGENTSNUM, carsnum, searchmap, log)
+            mymodel = model.SensingModel(AGENTSNUM, carsnum, searchmap, crossings, log)
             err = np.full((TICKSNUM), 0.0)
 
             for tick in range(TICKSNUM):
@@ -79,6 +91,13 @@ def run_multiple_cars():
                                                       outdir,)))
             else:
                 vv = one_run(AGENTSNUM, TICKSNUM, carsnum, _iter, searchmap, log, outdir)
+                print('##########################################################')
+                print('##########################################################')
+                print('##########################################################')
+                print('##########################################################')
+                print(AGENTSNUM)
+                print(carsnum)
+                print(_iter)
                 err[:, _iter] = vv
 
 
@@ -101,6 +120,9 @@ def run_once():
     AGENTSNUM = 30
     CARSNUM = 30
 
+    #search = Cachedsearch(graph, crossings)
+    #_path = search.get_path(start, goal)
+
     args = parse_arguments()
     fmt = '%(asctime)s %(funcName)s: %(message)s'
     lvl = logging.DEBUG if args.verbose else logging.CRITICAL
@@ -108,11 +130,15 @@ def run_once():
     log = logging.getLogger(__name__)
     filename = args.map if args.map else 'maps/toy2.npy'
     t0 = time.time()
-    searchmap = np.load(filename)
+
+    crossings = utils.get_crossings_from_image(args.map)
+    searchmap = utils.get_adjmatrix_from_image(args.map)
+
+    #searchmap = np.load(filename)
     log.debug('Loading {} took {}.'.format(filename, time.time() - t0))
 
     h, w = searchmap.shape
-    mymodel = model.SensingModel(AGENTSNUM, CARSNUM, searchmap, log)
+    mymodel = model.SensingModel(AGENTSNUM, CARSNUM, searchmap, crossings, log)
     #myview = view.View(searchmap, log)
 
     for i in range(ITERSNUM):

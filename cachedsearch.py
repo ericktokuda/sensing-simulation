@@ -29,8 +29,20 @@ class Cachedsearch:
         self.waypoints = waypoints
         self.waypointspaths = self.get_paths_from_all_waypoints(graph, waypoints)
     
-    def choose_waypoint(self, waypoints):
+    def choose_random_waypoint(self, waypoints):
         return waypoints[0][1]
+
+    def choose_closest_waypoints(self, waypoints1, waypoints2):
+        _min = 99999
+        wayps = []
+
+        for _, w1 in waypoints1:
+            for _, w2 in waypoints2:
+                aux = len(self.waypointspaths[w1][w2])
+                if aux > _min: continue
+                _min = aux
+                wayps = w1, w2
+        return wayps
 
     def get_path(self, start, goal):
         if start == goal: return []
@@ -40,7 +52,13 @@ class Cachedsearch:
         if goal in self.waypoints: goaliscrossing = True
 
         if startiscrossing and goaliscrossing:
-            return self.waypointspaths[start][goal]
+            print('check0')
+            import pprint
+            #pprint.pprint(self.waypointspaths[start])
+            print('##########################################################')
+            pprint.pprint(self.waypointspaths[start][goal])
+            #input()
+            return list(self.waypointspaths[start][goal])
 
         startcrossings = self.get_n_reachable_crossings(self.graph,
                                                         start, self.waypoints)
@@ -49,27 +67,31 @@ class Cachedsearch:
 
         #print(startcrossings)
         if startiscrossing and not goaliscrossing:
-            swayp = self.choose_waypoint(startcrossings)
+            #print('check1')
+            swayp = self.choose_random_waypoint(startcrossings)
             wayppath = self.waypointspaths[start][swayp]
             heuristics = utils.compute_heuristics(self.graph, swayp)
             astar = Astar(self.graph, heuristics, swayp, goal)
             finalpath = astar.get_path()
             return  finalpath + wayppath
         elif not startiscrossing and not goaliscrossing:
+            #print('check2')
             swayps = [ s[1] for s in startcrossings ]
             gwayps = [ g[1] for g in goalcrossings ]
-            #swayp = self.choose_waypoint(startcrossings)
-            #gwayp = self.choose_waypoint(goalcrossings)
+            #swayp = self.choose_random_waypoint(startcrossings)
+            #gwayp = self.choose_random_waypoint(goalcrossings)
             common = []
             for aux in swayps:
+                #print('check3')
                 if aux in gwayps: common.append(aux)
             
-            print(common)
+            #print(common)
             if len(common) == 0:
-                swayp = self.choose_waypoint(startcrossings)
-                gwayp = self.choose_waypoint(goalcrossings)
+                #print('check4')
+                swayp, gwayp = self.choose_closest_waypoints(startcrossings,
+                                                             goalcrossings)
 
-                print('check')
+                #print('check')
                 heuristics = utils.compute_heuristics(self.graph, swayp)
                 astar = Astar(self.graph, heuristics, start, swayp)
                 startpath = astar.get_path()
@@ -82,61 +104,27 @@ class Cachedsearch:
 
                 return  goalpath + wayppath + startpath
             else:
+                #print('check5')
                 heuristics = utils.compute_heuristics(self.graph, goal)
                 astar = Astar(self.graph, heuristics, start, goal)
                 goalpath = astar.get_path()
                 return  goalpath
-        elif startiscrossing and not goaliscrossing:
-            gwayp = self.choose_waypoint(goalcrossings)
-            wayppath = self.waypointspaths[start][gwayp]
-            heuristics = utils.compute_heuristics(self.graph, goal)
-            astar = Astar(self.graph, heuristics, gwayp, goal)
-            finalpath = astar.get_path()
-            return  finalpath + wayppath
+        elif not startiscrossing and goaliscrossing:
+            #print('check6')
+            swayp = self.choose_random_waypoint(goalcrossings)
+            heuristics = utils.compute_heuristics(self.graph, swayp)
+            astar = Astar(self.graph, heuristics, start, swayp)
+            startpath = astar.get_path()
+
+            wayppath = self.waypointspaths[swayp][goal]
+            #heuristics = utils.compute_heuristics(self.graph, goal)
+            #astar = Astar(self.graph, heuristics, gwayp, goal)
+            #finalpath = astar.get_path()
+            return  startpath + wayppath
 
 
-
-        sss = [ x[1] for x in startcrossings ]
-        ggg = [ x[1] for x in startcrossings ]
-
-        common = []
-        for c, v in startcrossings:
-            if v in ggg: common.append(v)
-
-        if len(common) == 0:
-            # path from start to startcrossing
-            heuristics = utils.compute_heuristics(self.graph, startcrossing[1])
-            astar = Astar(self.graph, heuristics, start, startcrossing[1])
-            final_path = astar.get_path()
-            print(final_path)
-
-
-            print(crossingpaths[startcrossing[1]][goalcrossing[1]])
-            # path from endcrossing to end
-            heuristics = utils.compute_heuristics(self.graph, goal)
-            astar = Astar(self.graph, heuristics, goalcrossing[1], goal)
-            final_path = astar.get_path()
-            print(final_path)
-        elif len(common) == 1:
-            # path from start to startcrossing
-            heuristics = utils.compute_heuristics(self.graph, common[0])
-            astar = Astar(self.graph, heuristics, start, common[0])
-            final_path = astar.get_path()
-            print(final_path)
-
-            # path from endcrossing to end
-            heuristics = utils.compute_heuristics(self.graph, goal)
-            astar = Astar(self.graph, heuristics, common[0], goal)
-            final_path = astar.get_path()
-            print(final_path)
-        elif len(common) == 2:
-            heuristics = utils.compute_heuristics(self.graph, goal)
-            astar = Astar(self.graph, heuristics, start, goal)
-            final_path = astar.get_path()
-            print(final_path)
-        
+        print('check7')
     
-    ##########################################################
     def get_n_reachable_crossings(self, graph, start, crossings, maxcrossings=2):
         ncrossings = []
         visitted = set()
@@ -160,23 +148,31 @@ class Cachedsearch:
         return ncrossings
 
 
-    ##########################################################
     def get_paths_from_all_waypoints(self, graph, crossings):
-        crossingneighbour = {}
-        for crss in crossings:
-            neighbours = self.get_n_reachable_crossings(graph, crss, crossings, 10)
-            crossingneighbour[crss] = neighbours
+        #neighbours = {}
+        #for crss in crossings:
+            #neigh = self.get_n_reachable_crossings(graph, crss, crossings, 10)
+            #neighbours[crss] = neigh
 
         paths = {}
         crossingpaths = {}
         for crss1 in crossings: # Dummy way, I am recomputing many times
             crossingpaths[crss1] = {}
+            #print('##########################################################')
+            #print('##########################################################')
+            #print(crss1)
             for crss2 in crossings:
                 if crss1 == crss2: continue
                 heuristics = utils.compute_heuristics(graph, crss2)
                 astar = Astar(graph, heuristics, crss1, crss2)
                 finalpath = astar.get_path()
+                #print(crss2)
+                #print(finalpath)
                 crossingpaths[crss1][crss2] = finalpath
+            #input('')
+
+        import pprint
+        pprint.pprint(crossingpaths)
 
         return crossingpaths
 
@@ -187,8 +183,8 @@ def main():
 
     #start = (4, 10)
     #goal  = (7, 20)
-    start = (4, 9)
-    goal  = (7, 20)
+    start = (4, 15)
+    goal  = (9, 20)
     image = 'maps/toy3.png'
     print(start)
     print(goal)
