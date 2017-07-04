@@ -12,9 +12,9 @@ def get_symbol_positions(searchmap, symbol=-1):
     t0 = time.time()
     origind = np.where(searchmap == symbol)
     ind = map(tuple, np.transpose(origind))
-    import pprint
+    #import pprint
     #print('bla')
-    pprint.pprint((searchmap))
+    #pprint.pprint((searchmap))
     return set(ind)
 
     #@staticmethod
@@ -37,7 +37,12 @@ def get_difference(Aheight, Awidth, B):
     all = set(list(itertools.product(yy,xx)))
     return list(all.difference(B))
 
-def parse_streets_from_image(imagefile):
+def get_manhattan_difference(pos1, pos2):
+    disty = math.fabs(pos1[0]-pos2[0])
+    distx = math.fabs(pos1[1]-pos2[1])
+    return distx + disty
+
+def get_streets_from_image(imagefile):
     """Parse the streets from image and return a numpy ndarray,
     with 0 as streets and -1 as non-streets. Assumes a 
     BW image as input, with pixels in black representing streets.
@@ -52,7 +57,7 @@ def parse_streets_from_image(imagefile):
     if img.ndim > 2: img = img[:, :, 0]
     return (img < 200).astype(int)  - 1
 
-def find_crossings_dummy(npmap):
+def find_crossings_crossshape(npmap):
     """Convolve with kernel considering input with
     0 as streets and -1 as non-streets. Assumes a 
     BW image as input, with pixels in black representing streets.
@@ -65,10 +70,45 @@ def find_crossings_dummy(npmap):
     list: set of indices that contains the nodes
     """
     ker = np.array([[0,1,0], [1, 1, 1], [0, 1, 0]])
-    convolved = scipy.signal.convolve2d(npmap, ker, mode='same')
+    convolved = scipy.signal.convolve2d(npmap, ker, mode='same',
+                                        boundary='fill', fillvalue=-1)
     inds = np.where(convolved >= -1)
     return set([ (a,b) for a,b in zip(inds[0], inds[1]) ])
 
+def find_crossings_squareshape(npmap, supressredundant=True):
+    """Convolve with kernel considering input with
+    0 as streets and -1 as non-streets. Assumes a 
+    BW image as input, with pixels in black representing streets.
+
+    Args:
+    npmap(numpy.ndarray): ndarray with two dimensions composed of -1 (obstacles)
+    and 0 (travesable paths)
+
+    Returns:
+    list: set of indices that contains the nodes
+    """
+
+    ker = np.array([[1,1], [1, 1]])
+    convolved = scipy.signal.convolve2d(npmap, ker, mode='same',
+                                        boundary='fill', fillvalue=-1)
+    inds = np.where(convolved >= 0)
+    crossings = set([ (a,b) for a,b in zip(inds[0], inds[1]) ])
+    if supressredundant: return get_nonredundant_crossings(crossings)
+    else: return crossings
+
+def get_nonredundant_crossings(crossings, thresh=5):
+    cr = list(crossings)
+    ncrossings = len(crossings)
+    redundant = set()
+
+    for i in range(ncrossings):
+        if cr[i] in redundant: continue
+        for j in range(i + 1, ncrossings):
+            dist = get_manhattan_difference(cr[0], cr[j])
+            if dist < thresh: redundant.add(j)
+    crssset = set(crossings)
+    return crssset.difference(redundant)
+    
 def get_adjacency_dummy(nodes, npmap):
     #if nodes
     return set([ (a,b) for a,b in zip(ind[0], ind[1]) ])
@@ -119,7 +159,7 @@ def get_adjmatrix_from_npy(_map):
         for i in range(0, w):
             if _map[j][i] == -1: continue
             adj[(j, i)] = set()
-            ns = get_neighbours_coords(j, i)
+            ns = get_neighbours_coords(j, i, 8)
             ns = eliminate_nonvalid_coords(ns, h, w)
 
             for jj, ii in ns:
@@ -128,10 +168,12 @@ def get_adjmatrix_from_npy(_map):
     return adj
 
 ##########################################################
-def get_neighbours_coords(j, i, yourself=False):
+def get_neighbours_coords(j, i, connectedness=4, yourself=False):
     """ Get diamond neighbours. Do _not_ take into account borders conditions
     """
     neighbours = [ (j, i-1), (j, i+1), (j-1, i), (j+1, i) ] 
+    if connectedness != 4:
+        neighbours += [ (j-1, i-1), (j-1, i+1), (j+1, i-1), (j+1, i+1) ] 
 
     if yourself: neighbours.append((j, i))
 
@@ -151,16 +193,17 @@ def eliminate_nonvalid_coords(ns, h, w):
 
 ##########################################################
 def get_adjmatrix_from_image(image):
-    searchmap = parse_streets_from_image(image)
+    searchmap = get_streets_from_image(image)
     #import pprint
     #pprint.pprint(searchmap)
     return get_adjmatrix_from_npy(searchmap)
 
 ##########################################################
 def get_crossings_from_image(image):
-    searchmap = parse_streets_from_image(image)
-    return find_crossings_dummy(searchmap)
+    searchmap = get_streets_from_image(image)
+    return find_crossings_squareshape(searchmap)
 
+##########################################################
 def get_mapshape_from_searchmap(hashtable):
     """Suppose keys have the form (x, y). We want max(x), max(y)
     such that not necessarily the key (max(x), max(y)) exists

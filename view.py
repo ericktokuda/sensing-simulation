@@ -10,8 +10,9 @@ import mpld3.plugins
 #############################################################
 class View():
     def __init__(self, searchmap, log):
-        plt.ion()
-        h, w = searchmap.shape
+        #plt.ion()
+        h, w = utils.get_mapshape_from_searchmap(searchmap)
+        #h, w = searchmap.shape
         self.maph = h
         self.mapw = w
         self.obstacles = utils.get_symbol_positions(searchmap, -1)

@@ -6,6 +6,7 @@ import sys
 import heapq
 import math
 import numpy as np
+import operator
 
 import pprint
 import utils
@@ -20,8 +21,15 @@ class Cachedsearch:
     def __init__(self, graph, waypoints):
         self.graph = graph
         self.waypoints = waypoints
-        self.wpspaths = self.get_paths_btw_waypoints(graph, waypoints)
+        self.wpspaths = self.get_paths_btw_all_wps(graph, waypoints)
+        #import pprint
+        #pprint.pprint(self.wpspaths)
+        #input()
     
+    def get_wps_path(self, wp1, wp2):
+        cr = sorted([wp1, wp2], key=operator.itemgetter(0, 1))
+        return self.wpspaths[cr[0]][cr[1]]
+
     def choose_random_waypoint(self, waypoints):
         """Choose the first waypoint of the list and extracts just
         the position
@@ -53,7 +61,7 @@ class Cachedsearch:
 
         for _, wp1 in wps1:
             for _, wp2 in wps2:
-                potentialmin = len(self.wpspaths[wp1][wp2])
+                potentialmin = len(self.get_wps_path(wp1, wp2))
                 if potentialmin > _min:
                     continue
                 else:
@@ -79,14 +87,14 @@ class Cachedsearch:
         if goal in self.waypoints: goaliswp = True
 
         if startiswp and goaliswp:
-            return list(self.wpspaths[start][goal])
+            return list(self.get_wps_path(start, goal))
 
         swps = self.get_nearby_crossings(self.graph, start, self.waypoints)
         gwps = self.get_nearby_crossings(self.graph, goal, self.waypoints)
 
         if startiswp and not goaliswp:
             swayp = self.choose_random_waypoint(swps)
-            wayppath = self.wpspaths[start][swayp]
+            wayppath = self.get_wps_path(start, swayp)
             finalpath = search.get_astar_path(self.graph, swayp, goal)
             _path = finalpath + wayppath
         elif not startiswp and not goaliswp:
@@ -97,10 +105,13 @@ class Cachedsearch:
                 if aux in gwayps: common.append(aux)
             
             if len(common) == 0:
+                #print(swps)
+                #print(gwps)
                 swayp, gwayp = self.choose_closest_waypoints(swps, gwps)
 
                 startpath = search.get_astar_path(self.graph, start, swayp)
-                wayppath = self.wpspaths[swayp][gwayp]
+                wayppath = self.get_wps_path(swayp, gwayp)
+
                 goalpath = search.get_astar_path(self.graph, gwayp, goal)
                 _path = goalpath + wayppath + startpath
             else:
@@ -109,7 +120,7 @@ class Cachedsearch:
         elif not startiswp and goaliswp:
             swayp = self.choose_random_waypoint(gwps)
             startpath = search.get_astar_path(self.graph, start, swayp)
-            wayppath = self.wpspaths[swayp][goal]
+            wayppath = self.get_wps_path(swayp, goal)
             _path =  startpath + wayppath
         else:
             print('error occured')
@@ -152,7 +163,7 @@ class Cachedsearch:
         return ncrossings
 
 
-    def get_paths_btw_waypoints(self, graph, crossings):
+    def get_paths_btw_all_wps(self, graph, crossings):
         """Get paths of all combinations of waypoints
     
         Args:
@@ -165,13 +176,16 @@ class Cachedsearch:
     
         paths = {}
         crossingpaths = {}
-        for crss1 in crossings: # Dummy way, I am recomputing many times
+        cr = sorted(list(crossings), key=operator.itemgetter(0, 1))
+        ncrossings = len(crossings)
+
+        for i in range(ncrossings):
+            crss1 = cr[i]
             crossingpaths[crss1] = {}
-            for crss2 in crossings:
-                if crss1 == crss2: continue
+            for j in range(i + 1, ncrossings):
+                crss2 = cr[j]
                 finalpath = search.get_astar_path(graph, crss1, crss2)
                 crossingpaths[crss1][crss2] = finalpath
-
         return crossingpaths
 
 ##########################################################
@@ -181,13 +195,23 @@ def main():
 
     #start = (4, 10)
     #goal  = (7, 20)
-    start = (4, 15)
-    goal  = (9, 20)
-    image = 'maps/toy3.png'
+    start = (16, 9)
+    goal  = (23, 16)
+    image = 'maps/toy5.png'
     print(start)
     print(goal)
 
+    #import pprint
     crossings = utils.get_crossings_from_image(image)
+    #pprint.pprint(crossings)
+    #pprint.pprint(crossings)
+    x = [ z[0] for z in crossings]
+    y = [ z[1] for z in crossings]
+    #import matplotlib.pyplot as plt
+    #plt.scatter(y, x)
+    #plt.gca().invert_yaxis()
+    #plt.show()
+    #return
     graph = utils.get_adjmatrix_from_image(image)
     search = Cachedsearch(graph, crossings)
     _path = search.get_path(start, goal)

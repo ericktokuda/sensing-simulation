@@ -231,3 +231,4 @@ class SensingModel():
             self.update_true_density()
             self.update_sensed_density()
             self.update_density_error()
+        time.sleep(0.5)
