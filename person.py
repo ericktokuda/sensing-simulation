@@ -1,6 +1,7 @@
 import astar
 import utils
 from cachedsearch import Cachedsearch
+import search
 
 #############################################################
 class Person():
