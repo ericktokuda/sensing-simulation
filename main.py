@@ -5,6 +5,7 @@ from numpy import genfromtxt
 import pprint
 import matplotlib.pyplot as plt
 import threading
+import os
 
 import model
 import time
@@ -42,7 +43,8 @@ def run_multiple_cars():
     log.debug('Start.')
     filename = args.map if args.map else 'maps/toy5.png'
     log.debug('{} loaded.'.format(filename))
-    outdir = '/tmp/'
+    outdir = './output/'
+    if not os.path.exists(outdir): os.makedirs(outdir)
 
     crossings = utils.get_crossings_from_image(filename)
     searchmap = utils.get_adjmatrix_from_image(filename)
