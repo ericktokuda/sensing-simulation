@@ -52,15 +52,17 @@ class View():
         if show: plt.show()
 
     def plot_densities(self, density1, density2):
-        self.plot_matplotlib(density1, self.axarr[0], False)
-        self.plot_matplotlib(density2, self.axarr[1], False)
+        #self.plot_matplotlib(density1, self.axarr[0], False)
+        #self.plot_matplotlib(density2, self.axarr[1], False)
+        self.plot_ascii(density1)
+        self.plot_ascii(density2)
         #self.f.show()
 
 #############################################################
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Sensing viewer')
     parser.add_argument('means', help='means npy')
-    parser.add_argument('vars', help='vars npy')
+    parser.add_argument('stds', help='stds npy')
     return parser.parse_args()
 
 def main():
@@ -68,13 +70,13 @@ def main():
     args = parse_arguments()
 
     _means = np.load(args.means)
-    _vars = np.load(args.vars)
+    _stds = np.load(args.stds)
 
     fig, ax = plt.subplots(figsize=(12,8))
     ax.grid(True, alpha=0.3)
-    for carsnum in range(0, _means.shape[1]):
+    for carsnum in range(_means.shape[1]):
         ax.errorbar(range(_means.shape[0]), _means[:, carsnum],
-                     _vars[:, carsnum], alpha=0.6, label='{}cars'.format(carsnum+1))
+                     _stds[:, carsnum], alpha=0.6, label='{}cars'.format(carsnum+1))
 
     #handles, labels = ax.get_legend_handles_labels() # return lines and labels
     #interactive_legend = mpld3.plugins.InteractiveLegendPlugin(zip(handles, ax.collections),
@@ -85,11 +87,13 @@ def main():
     #mpld3.plugins.connect(fig, interactive_legend)
 
 
+    ax.set_title('Error between real and sensed density')
     ax.set_xlabel('Ticks')
     ax.set_ylabel('Error')
-    ax.set_yscale("log", nonposy='clip')
+    #ax.set_yscale("log", nonposy='clip')
     ax.legend()
-    mpld3.show()
+    plt.show()
+    #mpld3.show()
 
 if __name__ == '__main__':
     main()

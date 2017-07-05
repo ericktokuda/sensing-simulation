@@ -64,9 +64,8 @@ def run_multiple_cars():
 
             for tick in range(TICKSNUM):
                 mymodel.step(True)
-                #mymodel.update_density_error()
                 err[tick] = mymodel.denserror
-                print(mymodel.denserror)
+                log.debug('dens error:{}'.format(mymodel.denserror))
 
                 if args.view:
                     tdens, sdens = mymodel.get_densities()

@@ -20,7 +20,7 @@ class SensingModel():
         h, w = utils.get_mapshape_from_searchmap(searchmap)
         self.mapshape = (h, w)
         self.tick = 0
-        self.carrange = 3
+        self.carrange = 1
         self.log = log
         self.maph = h
         self.mapw = w
@@ -29,10 +29,12 @@ class SensingModel():
         self.lastid = -1
         self.people = []
         self.cars = []
+
         self.truesensor = sensing.Sensor(self.mapshape)
         self.tdens = np.full(self.mapshape, 0.0)
         self.fleetsensor = sensing.Sensor(self.mapshape)
         self.sdens = np.full(self.mapshape, 0.0)
+
         self.free = list(self.searchmap.keys())
         self.place_agents(npeople, ncars)
         self.denserror = -1
@@ -55,8 +57,9 @@ class SensingModel():
             self.people.append(a)
             t0 = time.time()
             a.create_path()
-            self.log.debug('Create_path of person {} took {}.'. \
-                      format(self.lastid, time.time() - t0))
+            self.log.debug('Create_path of person {} {}->{} took {}.'. \
+                      format(self.lastid, pos, destiny, time.time() - t0))
+
             self.place_person(a, pos)
 
     def place_cars(self, ncars, _range):
@@ -69,8 +72,8 @@ class SensingModel():
             self.cars.append(a)
             t0 = time.time()
             a.create_path()
-            self.log.debug('Create_path of car {} took {}.'. \
-                      format(self.lastid, time.time() - t0))
+            self.log.debug('Create_path of car {} {}->{} took {}.'. \
+                      format(self.lastid, pos, destiny, time.time() - t0))
             self.place_car(a, pos)
 
     def place_agents(self, npeople, ncars):
@@ -127,17 +130,9 @@ class SensingModel():
         person.pos = pos
         self.add_agents_count(pos, +1)
 
-    def move_person(self, person, pos):
-        oldpos = person.pos
-        self.place_person(person, pos)
-
     def place_car(self, car, pos):
         self.cars.append(car)
         car.pos = pos
-
-    def move_car(self, car, pos):
-        oldpos = car.pos
-        self.place_car(car, pos)
 
     def get_enclosing_square(self, _car):
         d = _car.range
@@ -148,13 +143,14 @@ class SensingModel():
         b = y0 + d
         l = x0 - d
         r = x0 + d
-        if t < 0: t = 0 #trying to save somec omputations
-        elif b > self.maph: b = self.maph
-        if l < 0: l = 0
-        elif r > self.mapw: r = self.mapw
 
-        for y in range(t, b):
-            for x in range(l, r):
+        if t < 0: t = 0
+        if b >= self.maph: b = self.maph - 1
+        if l < 0: l = 0
+        if r >= self.mapw: r = self.mapw - 1
+
+        for y in range(t, b + 1):
+            for x in range(l, r + 1):
                 cells.add((y, x))
                 #cells.append((y, x))
         return cells
@@ -167,20 +163,12 @@ class SensingModel():
         for p in nearby:
             y, x = p
             self.fleetsensor.samplesz[y][x] += 1
-            self.truesensor.count[y][x] += peoplepos.count(p)
+            self.fleetsensor.count[y][x] += peoplepos.count(p)
         car.Car.clicks += 1
 
     def sense_region(self, _car):
         nearby = self.get_enclosing_square(_car)
         self.update_car_sensing(nearby)
-
-    def get_people_map(self):
-        tdens = np.full(self.searchmap.shape, 0)
-
-        for p in self.people:
-            y, x = p.pos
-            tdens[y][x] += 1
-        return tdens
 
     def compute_density_error(self):
         sdens = self.sdens
@@ -224,7 +212,6 @@ class SensingModel():
             c.step()
             newy, newx = c.pos
             self.sense_region(c)
-            #self.fleetsensor.samplesz
         self.tick += 1
 
         if update_densities:
