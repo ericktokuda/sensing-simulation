@@ -29,7 +29,7 @@ def run_multiple_cars():
     """Run multiple numbers of cars
     """
 
-    TICKSNUM = 10
+    TICKSNUM = 100
     TRIALS = 10
     AGENTSNUM = 3000
     CARSNUM = 10
@@ -40,7 +40,7 @@ def run_multiple_cars():
     logging.basicConfig(level=lvl, format=fmt, datefmt='%I:%M:%S')
     log = logging.getLogger(__name__)
     log.debug('Start.')
-    filename = args.map if args.map else 'maps/toy3.png'
+    filename = args.map if args.map else 'maps/toy5.png'
     log.debug('{} loaded.'.format(filename))
     outdir = '/tmp/'
 
