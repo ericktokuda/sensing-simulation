@@ -32,7 +32,7 @@ def run_multiple_cars():
 
     TICKSNUM = 100
     TRIALS = 10
-    AGENTSNUM = 3000
+    AGENTSNUM = 300
     CARSNUM = 10
 
     args = parse_arguments()
@@ -62,6 +62,7 @@ def run_multiple_cars():
             mymodel = model.SensingModel(AGENTSNUM, carsnum, searchmap, crossings, log)
             err = np.full((TICKSNUM), 0.0)
 
+            log.debug('Cars: {}, Iteration {}'.format(carsnum, _iter))
             for tick in range(TICKSNUM):
                 mymodel.step(True)
                 err[tick] = mymodel.denserror
