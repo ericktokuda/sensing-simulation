@@ -71,7 +71,7 @@ def run_multiple_cars():
                     tdens, sdens = mymodel.get_densities()
                     myview.plot_densities(tdens, sdens)
 
-                np.save('{}/{}cars-{}iter.npy'.format(outdir, carsnum, _iter), err)
+            np.save('{}/{}cars-{}iter.npy'.format(outdir, carsnum, _iter), err)
             return err
 
         for _iter in range(TRIALS):
