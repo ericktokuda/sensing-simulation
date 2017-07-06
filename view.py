@@ -61,11 +61,40 @@ class View():
 #############################################################
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Sensing viewer')
-    parser.add_argument('means', help='means npy')
-    parser.add_argument('stds', help='stds npy')
+    parser.add_argument('indir', help='input dir')
+    parser.add_argument('maxcars', help='maximum number of cars')
+    parser.add_argument('runs', help='number of runs')
     return parser.parse_args()
 
 def main():
+    parser = argparse.ArgumentParser(description='Sensing model')
+    args = parse_arguments()
+
+    indir = args.indir
+    maxcars = int(args.maxcars)
+    runs = int(args.runs)
+    ntrials = 100
+
+    fig, ax = plt.subplots(figsize=(12,8))
+    ax.grid(True, alpha=0.3)
+
+    for carsnum in range(1, maxcars +1):
+        err = np.ndarray((ntrials, runs))
+        for run in range(runs):
+            err[:, run] = np.load('{}/{}cars-{}iter.npy'.format(indir, carsnum, run))
+
+        _means = np.mean(err, axis=1)
+        _stds = np.std(err, axis=1)
+        ax.errorbar(range(_means.shape[0]), _means,
+                     _stds, alpha=0.4, label='{}cars'.format(carsnum))
+    ax.set_title('Error between real and sensed density')
+    ax.set_xlabel('Ticks')
+    ax.set_ylabel('Error')
+    #ax.set_yscale("log", nonposy='clip')
+    ax.legend()
+    plt.show()
+
+def old_main():
     parser = argparse.ArgumentParser(description='Sensing model')
     args = parse_arguments()
 
