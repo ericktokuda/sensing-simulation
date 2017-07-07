@@ -1,4 +1,6 @@
 import math
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import utils
@@ -12,12 +14,15 @@ class View():
     def __init__(self, searchmap, log):
         #plt.ion()
         h, w = utils.get_mapshape_from_searchmap(searchmap)
-        #h, w = searchmap.shape
         self.maph = h
         self.mapw = w
-        self.obstacles = utils.get_symbol_positions(searchmap, -1)
-        self.free = utils.get_difference(h, w, self.obstacles)
         self.f, self.axarr = plt.subplots(2, sharex=True)
+        self.axarr[0].set_xlim(0, w)
+        self.axarr[0].set_ylim(0, h)
+        self.axarr[1].set_xlim(0, w)
+        self.axarr[1].set_ylim(0, h)
+        self.f.set_size_inches(10, 12)
+
         self.axarr[0].invert_yaxis()
         self.axarr[1].invert_yaxis()
 
@@ -31,7 +36,7 @@ class View():
                     print(dens, end='')
             print()
 
-    def plot_matplotlib(self, densmap, subplot=None, show=True):
+    def plot_matplotlib(self, densmap, subplot, _max, show=True):
         yy = []
         xx = []
         cc = []
@@ -46,17 +51,21 @@ class View():
                     xx.append(i)
                     cc.append(dens)
         if subplot:
-            subplot.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=10)
+            subplot.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=_max)
         else:
             plt.scatter(xx, yy, c=cc, cmap='hot', marker='s', s=25, vmin=0, vmax=0.5)
+
         if show: plt.show()
 
-    def plot_densities(self, density1, density2):
-        #self.plot_matplotlib(density1, self.axarr[0], False)
-        #self.plot_matplotlib(density2, self.axarr[1], False)
-        self.plot_ascii(density1)
-        self.plot_ascii(density2)
+    def plot_densities(self, density1, density2, _max=10, keyword='out'):
+        self.plot_matplotlib(density1, self.axarr[0], _max, False)
+        self.plot_matplotlib(density2, self.axarr[1], _max, False)
+        #self.plot_ascii(density1)
+        #self.plot_ascii(density2)
         #self.f.show()
+        #plt.show()
+        plt.savefig('/tmp/{}.png'.format(str(keyword)))
+
 
 #############################################################
 def parse_arguments():

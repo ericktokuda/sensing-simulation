@@ -30,6 +30,7 @@ def run_multiple_cars():
     """Run multiple numbers of cars
     """
 
+    #TICKSNUM = 500
     TICKSNUM = 100
     TRIALS = 10
     AGENTSNUM = 300
@@ -56,25 +57,28 @@ def run_multiple_cars():
     if args.view: myview = view.View(searchmap, log)
 
     for carsnum in range(1, CARSNUM):
+    #for carsnum in range(3, 4):
         err = np.full((TICKSNUM, TRIALS), 0.0)
 
         def one_run(AGENTSNUM, TICKSNUM, carsnum, _iter, searchmap, log, outdir):
             mymodel = model.SensingModel(AGENTSNUM, carsnum, searchmap, crossings, log)
             err = np.full((TICKSNUM), 0.0)
 
-            log.debug('Cars: {}, Iteration {}'.format(carsnum, _iter))
+            _maxdens =  2*AGENTSNUM / float(len(searchmap.keys()))
             for tick in range(TICKSNUM):
+                log.debug('Cars: {}, Iter:{}, tick:{}'.format(carsnum, _iter, tick))
                 mymodel.step(True)
                 err[tick] = mymodel.denserror
                 log.debug('dens error:{}'.format(mymodel.denserror))
 
                 if args.view:
                     tdens, sdens = mymodel.get_densities()
-                    myview.plot_densities(tdens, sdens)
+                    myview.plot_densities(tdens, sdens, _maxdens, tick)
 
             np.save('{}/{}cars-{}iter.npy'.format(outdir, carsnum, _iter), err)
             return err
 
+        #for _iter in range(1):
         for _iter in range(TRIALS):
             if args.mthread:
                 threads.append(threading.Thread(target=one_run,
