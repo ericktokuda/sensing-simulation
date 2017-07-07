@@ -12,7 +12,7 @@ import pprint
 import utils
 import search
 
-MAX = 9999999
+MAX = sys.maxsize
 
 class Cachedsearch:
     """Caches paths between crossings
@@ -22,11 +22,18 @@ class Cachedsearch:
         self.graph = graph
         self.waypoints = waypoints
         self.wpspaths = self.get_paths_btw_all_wps(graph, waypoints)
-        #import pprint
-        #pprint.pprint(self.wpspaths)
-        #input()
     
     def get_wps_path(self, wp1, wp2):
+        """Get cached search between wp1 and wp2
+    
+        Args:
+        waypoints(list of tuples): each element contain (cost, pos)
+    
+        Returns:
+        tuple: position of first element of the list
+        """
+        if wp1 == wp2: return []
+
         cr = sorted([wp1, wp2], key=operator.itemgetter(0, 1))
         return self.wpspaths[cr[0]][cr[1]]
 
@@ -41,7 +48,12 @@ class Cachedsearch:
         tuple: position of first element of the list
         """
 
-        return waypoints[0][1]
+        _min = sys.maxsize
+        for cost, v in waypoints:
+            if cost < _min:
+                minwp = v
+
+        return minwp
 
     def choose_closest_waypoints(self, wps1, wps2):
         """Choose the nearest waypoints, given two sets of waypoints
@@ -56,15 +68,13 @@ class Cachedsearch:
         Raises:
         """
     
-        _min = 99999
+        _min = sys.maxsize
         closestwps = []
 
         for _, wp1 in wps1:
             for _, wp2 in wps2:
                 potentialmin = len(self.get_wps_path(wp1, wp2))
-                if potentialmin > _min:
-                    continue
-                else:
+                if potentialmin < _min:
                     _min = potentialmin
                     closestwps = wp1, wp2
         return closestwps
@@ -86,46 +96,41 @@ class Cachedsearch:
         if start in self.waypoints: startiswp = True
         if goal in self.waypoints: goaliswp = True
 
-        if startiswp and goaliswp:
-            return list(self.get_wps_path(start, goal))
-
         swps = self.get_nearby_crossings(self.graph, start, self.waypoints)
         gwps = self.get_nearby_crossings(self.graph, goal, self.waypoints)
 
-        if startiswp and not goaliswp:
-            swayp = self.choose_random_waypoint(swps)
-            wayppath = self.get_wps_path(start, swayp)
-            finalpath = search.get_astar_path(self.graph, swayp, goal)
-            _path = finalpath + wayppath
+        endpath = midpath = stapath = []
+
+        if startiswp and goaliswp:
+            stapath = list(self.get_wps_path(start, goal))
+        elif startiswp and not goaliswp:
+            gwp = self.choose_random_waypoint(gwps)
+            stapath = self.get_wps_path(start, gwp)
+            midpath = search.get_astar_path(self.graph, gwp, goal)
         elif not startiswp and not goaliswp:
             swayps = [ s[1] for s in swps ]
             gwayps = [ g[1] for g in gwps ]
             common = []
+
             for aux in swayps:
                 if aux in gwayps: common.append(aux)
             
             if len(common) == 0:
-                #print(swps)
-                #print(gwps)
-                swayp, gwayp = self.choose_closest_waypoints(swps, gwps)
+                swp, gwp = self.choose_closest_waypoints(swps, gwps)
 
-                startpath = search.get_astar_path(self.graph, start, swayp)
-                wayppath = self.get_wps_path(swayp, gwayp)
-
-                goalpath = search.get_astar_path(self.graph, gwayp, goal)
-                _path = goalpath + wayppath + startpath
+                stapath = search.get_astar_path(self.graph, start, swp)
+                midpath = self.get_wps_path(swp, gwp)
+                endpath = search.get_astar_path(self.graph, gwp, goal)
             else:
-                goalpath = search.get_astar_path(self.graph, start, goal)
-                _path = goalpath
+                stapath = search.get_astar_path(self.graph, start, goal)
         elif not startiswp and goaliswp:
-            swayp = self.choose_random_waypoint(gwps)
-            startpath = search.get_astar_path(self.graph, start, swayp)
-            wayppath = self.get_wps_path(swayp, goal)
-            _path =  startpath + wayppath
+            swp = self.choose_random_waypoint(swps)
+            stapath = search.get_astar_path(self.graph, start, swp)
+            midpath = self.get_wps_path(swp, goal)
         else:
             print('error occured')
-            _path = []
-        return _path
+            
+        return endpath + midpath + stapath
     
     def get_nearby_crossings(self, graph, start, crossings, maxcrossings=2):
         """Get reachable crossings according to graph from @start position
@@ -139,7 +144,7 @@ class Cachedsearch:
         list of tuple: list of crossings nearby
         """
 
-        ncrossings = []
+        nearby = []
         visitted = set()
         _crossings = crossings.copy()
 
@@ -153,14 +158,10 @@ class Cachedsearch:
             v = _path[0]
             cost = len(_path)
             visitted.add(v)
-
-            if ncrossings and cost < ncrossings[0][0]:
-                ncrossings.insert(0, (cost, v))
-            else:
-                ncrossings.append((cost, v))
+            nearby.append((cost, v))
             _crossings.discard(v)
 
-        return ncrossings
+        return nearby
 
 
     def get_paths_btw_all_wps(self, graph, crossings):
@@ -195,11 +196,9 @@ def main():
 
     #start = (4, 10)
     #goal  = (7, 20)
-    start = (16, 9)
+    start = (21, 14)
     goal  = (23, 16)
     image = 'maps/toy5.png'
-    print(start)
-    print(goal)
 
     #import pprint
     crossings = utils.get_crossings_from_image(image)
@@ -214,6 +213,7 @@ def main():
     #return
     graph = utils.get_adjmatrix_from_image(image)
     search = Cachedsearch(graph, crossings)
+    print(search.waypoints)
     _path = search.get_path(start, goal)
     pprint.pprint(_path)
 

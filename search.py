@@ -10,8 +10,6 @@ import pprint
 
 import utils
 
-MAX = 9999999
-
 ##########################################################
 def recreate_path(current, camefrom, skipstart=True):
     """Recreate A* path
@@ -53,7 +51,7 @@ def get_astar_path(graph, start, goal):
     camefrom = {}
     goalsset = goal if type(goal) == list else [goal]
     h = utils.compute_heuristics(graph, goal)
-    g = dict.fromkeys(h.keys(), MAX)
+    g = dict.fromkeys(h.keys(), sys.maxsize)
     g[start] = 0
 
     heapq.heappush(discovered, (h[start], start))
@@ -75,7 +73,7 @@ def get_astar_path(graph, start, goal):
 
             if dist >= g[v]:
                 if v not in nodes:
-                    heapq.heappush(discovered, (MAX, v))
+                    heapq.heappush(discovered, (sys.maxsize, v))
                 continue
 
             camefrom[v] = current

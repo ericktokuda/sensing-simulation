@@ -1,6 +1,6 @@
 import math
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import utils
@@ -63,8 +63,9 @@ class View():
         #self.plot_ascii(density1)
         #self.plot_ascii(density2)
         #self.f.show()
-        #plt.show()
-        plt.savefig('/tmp/{}.png'.format(str(keyword)))
+        plt.show()
+        input()
+        #plt.savefig('/tmp/{}.png'.format(str(keyword)))
 
 
 #############################################################
