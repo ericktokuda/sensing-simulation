@@ -2,7 +2,10 @@
 	"map": "maps/toy2.png",
 	"nticks": 100,
 	"nrepeats": 10,
-	"npeople": 300,
-	"ncars": 10,
+	"npeople": [100, 100],
+	"fleetsize": [3, 3],
+	"fleetsensorrange": [1, 1],
+	"fleetsensorfreq": [1, 1],
+	"fleetspeed": [1, 1],
 	"outputdir": "./output/"
 }

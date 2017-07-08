@@ -80,20 +80,6 @@ class SensingModel():
         self.place_people(npeople)
         self.place_cars(ncars, self.carrange)
 
-    def print_map(self):
-        for y in range(self.maph):
-            for x in range(self.mapw):
-                pos = (y,x)
-                if self.searchmap[y][x] == -1:
-                    print('x', end='')
-                elif pos in [c.pos for c in self.cars]:
-                    print('⚀', end='')
-                elif pos in [p.pos for p in self.people]:
-                    print('☺', end='')
-                else:
-                    print(' ', end='')
-            print()
-
     def compute_true_density(self):
         if self.tick == 0: return np.full(self.mapshape, -1)
         tdens = np.full(self.mapshape, 0)
