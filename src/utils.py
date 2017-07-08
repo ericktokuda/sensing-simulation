@@ -6,7 +6,9 @@ import time
 import scipy.misc
 import scipy.signal
 
-def get_symbol_positions(searchmap, symbol=-1):
+OBSTACLE = -1
+
+def get_symbol_positions(searchmap, symbol=OBSTACLE):
     """Return the set of positions that has the symbol
 
     Args:
@@ -56,7 +58,7 @@ def get_manhattan_difference(pos1, pos2):
 
 def get_streets_from_image(imagefile, thresh=128):
     """Parse the streets from image and return a numpy ndarray,
-    with 0 as streets and -1 as non-streets. Assumes a 
+    with 0 as streets and OBSTACLE as non-streets. Assumes a 
     BW image as input, with pixels in white representing streets.
 
     Args:
@@ -71,7 +73,7 @@ def get_streets_from_image(imagefile, thresh=128):
 
 def find_crossings_crossshape(npmap):
     """Convolve with kernel considering input with
-    0 as streets and -1 as non-streets. Assumes a 
+    0 as streets and OBSTACLE as non-streets. Assumes a 
     BW image as input, with pixels in black representing streets.
 
     Args:
@@ -83,8 +85,8 @@ def find_crossings_crossshape(npmap):
     """
     ker = np.array([[0,1,0], [1, 1, 1], [0, 1, 0]])
     convolved = scipy.signal.convolve2d(npmap, ker, mode='same',
-                                        boundary='fill', fillvalue=-1)
-    inds = np.where(convolved >= -1)
+                                        boundary='fill', fillvalue=OBSTACLE)
+    inds = np.where(convolved >= OBSTACLE)
     return set([ (a,b) for a,b in zip(inds[0], inds[1]) ])
 
 def find_crossings_squareshape(npmap, supressredundant=True):
@@ -102,7 +104,7 @@ def find_crossings_squareshape(npmap, supressredundant=True):
 
     ker = np.array([[1,1], [1, 1]])
     convolved = scipy.signal.convolve2d(npmap, ker, mode='same',
-                                        boundary='fill', fillvalue=-1)
+                                        boundary='fill', fillvalue=OBSTACLE)
     inds = np.where(convolved >= 0)
     crossings = set([ (a,b) for a,b in zip(inds[0], inds[1]) ])
     if supressredundant: return filter_by_distance(crossings)
@@ -149,8 +151,8 @@ def compute_heuristics(adjmatrix, goal):
     gy, gx = goal
     h = {}
     for j, i in adjmatrix.keys():
-        distx = math.fabs(i-gx)
-        disty = math.fabs(j-gy)
+        distx = math.fabs(i - gx)
+        disty = math.fabs(j - gy)
         h[(j, i)] = distx + disty
     return h
 
@@ -167,31 +169,30 @@ def compute_heuristics_from_map(searchmap, goal):
         disty = math.fabs(j-gy)
         for i in range(width):
             v = s[j][i]
-            if v == -1: # obstacle
+            if v == OBSTACLE:
                 h[(j, i)] = MAX
-            elif v == 0: # normal
-                distx = math.fabs(i-gx)
-                h[(j, i)] = distx + disty
-            else: # more difficult place
+            else:
                 distx = math.fabs(j-gx)
                 h[(j, i)] = distx + disty + v
     return h
 
 ##########################################################
 def get_adjmatrix_from_npy(_map):
-    """Easiest approach, considering 1 for each neighbour."""
+    """Easiest approach, considering 1 for each neighbour.
+    """
+
     h, w = _map.shape
     adj = {}
 
     for j in range(0, h):
         for i in range(0, w):
-            if _map[j][i] == -1: continue
+            if _map[j][i] == OBSTACLE: continue
             adj[(j, i)] = set()
             ns = get_neighbours_coords(j, i, 8)
             ns = eliminate_nonvalid_coords(ns, h, w)
 
             for jj, ii in ns:
-                if _map[jj][ii] != -1:
+                if _map[jj][ii] != OBSTACLE:
                     adj[(j, i)].add((1, (jj, ii)))
     return adj
 
@@ -275,6 +276,7 @@ def get_mapshape_from_searchmap(hashtable):
     Returns:
     int, int: max values for the keys
     """
+
     ks = hashtable.keys()
     h = max([y[0] for y in ks])
     w = max([x[1] for x in ks])

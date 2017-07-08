@@ -6,6 +6,7 @@ import pprint
 import matplotlib.pyplot as plt
 import threading
 import os
+import json
 
 import model
 import time
@@ -22,7 +23,7 @@ def parse_arguments():
                         help='Verbose')
     parser.add_argument('--mthread', action='store_true', default=False,
                         help='Verbose')
-    parser.add_argument('map', nargs='?', default='', help='ndarray in .npy format')
+    parser.add_argument('config', nargs='?', default='config/simple.json', help='Config file in json format')
     return parser.parse_args()
 
 #############################################################
@@ -30,21 +31,23 @@ def run_multiple_cars():
     """Run multiple numbers of cars
     """
 
-    #TICKSNUM = 500
-    TICKSNUM = 100
-    TRIALS = 10
-    AGENTSNUM = 300
-    CARSNUM = 10
-
     args = parse_arguments()
+    with open(args.config, 'r') as jsonfh: config = json.load(jsonfh)
+
+    nticks = config['nticks']
+    nrepeats = config['nrepeats']
+    npeople = config['npeople']
+    ncars = config['ncars']
+    outdir = config['outputdir']
+
     fmt = '%(asctime)s %(funcName)s: %(message)s'
     lvl = logging.DEBUG if args.verbose else logging.CRITICAL
     logging.basicConfig(level=lvl, format=fmt, datefmt='%I:%M:%S')
     log = logging.getLogger(__name__)
     log.debug('Start.')
-    filename = args.map if args.map else 'maps/toy5.png'
+
+    filename = config['map']
     log.debug('{} loaded.'.format(filename))
-    outdir = './output/'
     if not os.path.exists(outdir): os.makedirs(outdir)
 
     crossings = utils.get_crossings_from_image(filename)
@@ -52,20 +55,19 @@ def run_multiple_cars():
     h, w = utils.get_mapshape_from_searchmap(searchmap)
 
     threads = []
-    _means = np.full((TICKSNUM, CARSNUM - 1), 0.0)
-    _stds = np.full((TICKSNUM, CARSNUM - 1), 0.0)
+    _means = np.full((nticks, ncars - 1), 0.0)
+    _stds = np.full((nticks, ncars - 1), 0.0)
     if args.view: myview = view.View(searchmap, log)
 
-    for carsnum in range(1, CARSNUM):
-    #for carsnum in range(3, 4):
-        err = np.full((TICKSNUM, TRIALS), 0.0)
+    for carsnum in range(1, ncars):
+        err = np.full((nticks, nrepeats), 0.0)
 
-        def one_run(AGENTSNUM, TICKSNUM, carsnum, _iter, searchmap, log, outdir):
-            mymodel = model.SensingModel(AGENTSNUM, carsnum, searchmap, crossings, log)
-            err = np.full((TICKSNUM), 0.0)
+        def one_run(npeople, nticks, carsnum, _iter, searchmap, log, outdir):
+            mymodel = model.SensingModel(npeople, carsnum, searchmap, crossings, log)
+            err = np.full((nticks), 0.0)
 
-            _maxdens =  2*AGENTSNUM / float(len(searchmap.keys()))
-            for tick in range(TICKSNUM):
+            _maxdens =  2*npeople / float(len(searchmap.keys()))
+            for tick in range(nticks):
                 log.debug('Cars: {}, Iter:{}, tick:{}'.format(carsnum, _iter, tick))
                 mymodel.step(True)
                 err[tick] = mymodel.denserror
@@ -78,16 +80,15 @@ def run_multiple_cars():
             np.save('{}/{}cars-{}iter.npy'.format(outdir, carsnum, _iter), err)
             return err
 
-        #for _iter in range(1):
-        for _iter in range(TRIALS):
+        for _iter in range(nrepeats):
             if args.mthread:
                 threads.append(threading.Thread(target=one_run,
-                                                args=(AGENTSNUM,TICKSNUM,
+                                                args=(npeople,nticks,
                                                       carsnum, _iter,
                                                       searchmap, log,
                                                       outdir,)))
             else:
-                vv = one_run(AGENTSNUM, TICKSNUM, carsnum, _iter, searchmap, log, outdir)
+                vv = one_run(npeople, nticks, carsnum, _iter, searchmap, log, outdir)
                 err[:, _iter] = vv
 
 
@@ -99,9 +100,9 @@ def run_multiple_cars():
 
     if not args.mthread:
         np.save('{}/error-{}cars-{}ticks-{}agents.npy'. \
-                format(outdir,CARSNUM,TICKSNUM, AGENTSNUM), _means)
+                format(outdir,ncars,nticks, npeople), _means)
         np.save('{}/error-variance-{}cars-{}ticks-{}agents.npy'. \
-                format(outdir, CARSNUM, TICKSNUM, AGENTSNUM), _stds)
+                format(outdir, ncars, nticks, npeople), _stds)
     log.debug('Finished.')
 
 #############################################################

@@ -1,0 +1,8 @@
+{
+	"map": "maps/toy2.png",
+	"nticks": 100,
+	"nrepeats": 10,
+	"npeople": 300,
+	"ncars": 10,
+	"outputdir": "./output/"
+}
