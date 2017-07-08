@@ -1,6 +1,4 @@
-#!/usr/bin/python3
-""" A* implementation by tokudaek
-"""
+#!/usr/bin/env python3
 
 import sys
 import heapq
@@ -15,8 +13,7 @@ import search
 MAX = sys.maxsize
 
 class Cachedsearch:
-    """Caches paths between crossings
-    """
+    """Caches paths between waypoints"""
 
     def __init__(self, graph, waypoints):
         self.graph = graph
@@ -64,8 +61,6 @@ class Cachedsearch:
     
         Returns:
         tuple of tuples: return the positions of the two closest waypoints
-    
-        Raises:
         """
     
         _min = sys.maxsize
@@ -107,7 +102,11 @@ class Cachedsearch:
             gwp = self.choose_random_waypoint(gwps)
             stapath = self.get_wps_path(start, gwp)
             midpath = search.get_astar_path(self.graph, gwp, goal)
-        elif not startiswp and not goaliswp:
+        elif not startiswp and goaliswp:
+            swp = self.choose_random_waypoint(swps)
+            stapath = search.get_astar_path(self.graph, start, swp)
+            midpath = self.get_wps_path(swp, goal)
+        else:   # not and not
             swayps = [ s[1] for s in swps ]
             gwayps = [ g[1] for g in gwps ]
             common = []
@@ -123,12 +122,6 @@ class Cachedsearch:
                 endpath = search.get_astar_path(self.graph, gwp, goal)
             else:
                 stapath = search.get_astar_path(self.graph, start, goal)
-        elif not startiswp and goaliswp:
-            swp = self.choose_random_waypoint(swps)
-            stapath = search.get_astar_path(self.graph, start, swp)
-            midpath = self.get_wps_path(swp, goal)
-        else:
-            print('error occured')
             
         return endpath + midpath + stapath
     
@@ -194,30 +187,20 @@ def main():
     import time
     t0 = time.time()
 
-    #start = (4, 10)
-    #goal  = (7, 20)
     start = (21, 14)
     goal  = (23, 16)
     image = 'maps/toy5.png'
 
-    #import pprint
     crossings = utils.get_crossings_from_image(image)
-    #pprint.pprint(crossings)
-    #pprint.pprint(crossings)
     x = [ z[0] for z in crossings]
     y = [ z[1] for z in crossings]
-    #import matplotlib.pyplot as plt
-    #plt.scatter(y, x)
-    #plt.gca().invert_yaxis()
-    #plt.show()
-    #return
     graph = utils.get_adjmatrix_from_image(image)
     search = Cachedsearch(graph, crossings)
     print(search.waypoints)
     _path = search.get_path(start, goal)
     pprint.pprint(_path)
-
     print('Total time:{}'.format(time.time() - t0))
+
 if __name__ == "__main__":
     main()
 

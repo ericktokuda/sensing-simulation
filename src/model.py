@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +11,6 @@ import time
 import person
 import car
 import utils
-import sensing
 
 #############################################################
 class SensingModel():
@@ -30,28 +31,33 @@ class SensingModel():
         self.people = []
         self.cars = []
 
-        self.truesensor = sensing.Sensor(self.mapshape)
+        self.truesensor = Sensor(self.mapshape)
         self.tdens = np.full(self.mapshape, 0.0)
-        self.fleetsensor = sensing.Sensor(self.mapshape)
+        self.fleetsensor = Sensor(self.mapshape)
         self.sdens = np.full(self.mapshape, 0.0)
 
         self.free = list(self.searchmap.keys())
         self.place_agents(npeople, ncars)
         self.denserror = -1
 
-    def get_free_pos(self, avoided=[]):
+    def get_free_pos(self, avoided=[], n=1):
         nfree = len(self.free)
-        while True:
+        freepos = []    # we accept repetitions
+
+        while len(freepos) < n:
             rndidx = self.rng.randrange(0, nfree)
             chosen = self.free[rndidx]
-            if chosen != avoided: break
-        #print(len(self.free))
-        return chosen
+            if chosen != avoided: freepos.append(chosen)
+        return freepos
 
     def place_people(self, npeople):
+        freepos = self.get_free_pos([], 2*npeople)
+
         for i in range(npeople):
-            pos = self.get_free_pos()
-            destiny = self.get_free_pos(pos)
+            #pos = self.get_free_pos()
+            pos = freepos.pop()
+            destiny = freepos.pop()
+            #destiny = self.get_free_pos(pos)
             self.lastid += 1
             a = person.Person(self.lastid, self, pos, destiny, self.searchmap, self.crossings)
             self.people.append(a)
@@ -63,9 +69,12 @@ class SensingModel():
             self.place_person(a, pos)
 
     def place_cars(self, ncars, _range):
+        freepos = self.get_free_pos([], 2*ncars)
         for i in range(ncars):
-            pos = self.get_free_pos()
-            destiny = self.get_free_pos(pos)
+            #pos = self.get_free_pos()
+            #destiny = self.get_free_pos(pos)
+            pos = freepos.pop()
+            destiny = freepos.pop()
             self.lastid += 1
             a = car.Car(self.lastid, self, pos, destiny,
                         self.searchmap, self.crossings, _range)
@@ -107,39 +116,18 @@ class SensingModel():
     def update_sensed_density(self):
         self.sdens = self.compute_sensed_density()
 
-    def add_agents_count(self, pos, delta=1):
+    def increment_people_count(self, pos, delta=1):
         y, x = pos
         self.truesensor.count[y][x] += delta
 
     def place_person(self, person, pos):
         self.people.append(person)
         person.pos = pos
-        self.add_agents_count(pos, +1)
+        self.increment_people_count(pos)
 
     def place_car(self, car, pos):
         self.cars.append(car)
         car.pos = pos
-
-    def get_enclosing_square(self, _car):
-        d = _car.range
-        y0, x0 = _car.pos
-        cells = set()
-
-        t = y0 - d
-        b = y0 + d
-        l = x0 - d
-        r = x0 + d
-
-        if t < 0: t = 0
-        if b >= self.maph: b = self.maph - 1
-        if l < 0: l = 0
-        if r >= self.mapw: r = self.mapw - 1
-
-        for y in range(t, b + 1):
-            for x in range(l, r + 1):
-                cells.add((y, x))
-                #cells.append((y, x))
-        return cells
 
     def get_densities(self):
         return self.tdens, self.sdens
@@ -153,7 +141,7 @@ class SensingModel():
         car.Car.clicks += 1
 
     def sense_region(self, _car):
-        nearby = self.get_enclosing_square(_car)
+        nearby = _car.get_cells_in_range(self.maph, self.mapw)
         self.update_car_sensing(nearby)
 
     def compute_density_error(self):
@@ -164,7 +152,6 @@ class SensingModel():
 
         for y in range(self.maph):
             for x in range(self.mapw):
-                pos = (y,x)
                 sensed = sdens[y][x]
 
                 if sensed != -1:
@@ -176,27 +163,15 @@ class SensingModel():
     def update_density_error(self):
         self.denserror = self.compute_density_error()
 
-    def step(self, update_densities=True): #TODO: Change the order in which agents are called
+    def step(self, update_densities=True):
+        freepos = self.get_free_pos([], len(self.people) + len(self.cars))
+
         for p in self.people:
-            oldpos = p.pos
-
-            if not p.path:
-                destiny = self.get_free_pos(p.pos)
-                p.destiny = destiny
-                p.create_path()
-
-            p.step()
-            self.add_agents_count(p.pos, +1)
+            p.step(freepos)
+            self.increment_people_count(p.pos)
 
         for c in self.cars:
-            oldpos = c.pos
-
-            if not c.path:
-                c.destiny = self.get_free_pos(c.pos)
-                c.create_path()
-
-            c.step()
-            newy, newx = c.pos
+            c.step(freepos)
             self.sense_region(c)
         self.tick += 1
 
@@ -204,3 +179,8 @@ class SensingModel():
             self.update_true_density()
             self.update_sensed_density()
             self.update_density_error()
+
+class Sensor:
+    def __init__(self, _shape):
+        self.count = np.full(_shape, 0)
+        self.samplesz = np.full(_shape, 0)

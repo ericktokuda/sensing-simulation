@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import utils
 from cachedsearch import Cachedsearch
 import search
@@ -19,6 +21,7 @@ class Person():
             Person.search = Cachedsearch(searchmap, crossings)
 
     def create_path(self):
+        if self.destiny == self.pos: return []
         self.path = self.search.get_path(self.pos, self.destiny)
         if not self.path:
             print('Could not find path from {} to {}'. \
@@ -30,5 +33,10 @@ class Person():
         else:
             self.status = 'going'
 
-    def step(self):
-        self.pos = self.path.pop()
+    def step(self, freepos):
+        if not self.path:
+            self.destiny = freepos.pop()
+            self.create_path()
+
+        if self.path:
+            self.pos = self.path.pop()
